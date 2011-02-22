@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+    <artifactId>super-pom</artifactId>
+    <groupId>fr.soleil</groupId>
+    <version>1.1</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.soleil.lib</groupId>
+  <artifactId>hdbtdbArchivingApi</artifactId>
+  <name>hdbtdbArchivingApi</name>
+  <version>1.4.3</version>
+  <scm>
+    <connection>scm:cvs:pserver:tango-cs.cvs.sourceforge.net:/cvsroot/tango-cs:archiving/api/hdbtdbArchivingApi</connection>
+    <url>http://tango-cs.cvs.sourceforge.net/tango-cs/archiving/api/hdbtdbArchivingApi/</url>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>fr.esrf.tango</groupId>
+      <artifactId>TangORB</artifactId>
+      <version>${TangORB.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>fr.esrf.atk</groupId>
+      <artifactId>ATKCore</artifactId>
+      <version>${ATKCore.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>fr.soleil.lib</groupId>
+      <artifactId>commonArchivingApi</artifactId>
+      <version>1.4.2</version>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>5.0.4</version>
+    </dependency>
+    <dependency>
+    	<groupId>com.oracle</groupId>
+		<artifactId>ojdbc14</artifactId>
+		<version>10.2.0.2.0</version>
+    </dependency> 
+    <dependency>
+      <groupId>commons-pool</groupId>
+      <artifactId>commons-pool</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-dbcp</groupId>
+      <artifactId>commons-dbcp</artifactId>
+      <version>1.2.1</version>
+    </dependency>
+  </dependencies>
+</project>
+

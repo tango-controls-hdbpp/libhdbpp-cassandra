@@ -1,0 +1,8 @@
+
+
+7th September 2010
+------------------
+
+Comments in Reader class improved
+Now get_attribute_values parses better time formats.
+Compatible with PyTango>=7.1.2

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	
+	<parent>
+		<artifactId>super-pom-java</artifactId>
+		<groupId>fr.soleil</groupId>
+		<version>RELEASE</version>
+	</parent>
+
+	<name>common gui classes for archiving</name>
+
+	<groupId>fr.soleil.gui</groupId>
+	<artifactId>commonArchivingGUI</artifactId>
+	<version>0.0.4</version>
+
+	<scm>
+		<connection>
+			${scm.connection.cvs.tango-cs}:archiving/tool/common/commonArchivingGUI
+		</connection>
+		<developerConnection>
+			${scm.developerConnection.cvs.tango-cs}:archiving/tool/common/commonArchivingGUI
+		</developerConnection>
+		<url>
+			${scm.url.cvs.tango-cs}/archiving/tool/common/commonArchivingGUI
+		</url>
+	</scm>
+
+	<dependencies>
+		<dependency>
+			<groupId>fr.soleil.lib</groupId>
+			<artifactId>commonArchivingApi</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.swinglabs</groupId>
+			<artifactId>swingx</artifactId>
+		</dependency>
+	</dependencies>
+</project>

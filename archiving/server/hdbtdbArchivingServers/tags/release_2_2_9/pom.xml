@@ -1,0 +1,55 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<artifactId>super-pom-java</artifactId>
+		<groupId>fr.soleil</groupId>
+		<version>RELEASE</version>
+	</parent>
+
+	<groupId>fr.soleil.deviceservers</groupId>
+	<artifactId>hdbtdbArchivingServers</artifactId>
+	<name>hdbtdbArchivingServers</name>
+
+	<version>2.2.9</version>
+
+	<scm>
+		<connection>${scm.connection.cvs.tango-cs}:archiving/server/hdbtdbArchivingServers</connection>
+		<developerConnection>${scm.developerConnection.cvs.tango-cs}:archiving/server/hdbtdbArchivingServers</developerConnection>
+		<url>${scm.url.cvs.tango-cs}/archiving/server/hdbtdbArchivingServers/</url>
+	</scm>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>fr.soleil.maven.plugins</groupId>
+				<artifactId>maven-script-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>install</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>org.tango</groupId>
+			<artifactId>TangORB-javadao</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>fr.soleil.lib</groupId>
+			<artifactId>hdbtdbArchivingApi</artifactId>
+		</dependency>
+	</dependencies>
+</project>

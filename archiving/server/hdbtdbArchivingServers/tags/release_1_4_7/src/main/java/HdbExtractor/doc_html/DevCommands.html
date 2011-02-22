@@ -1,0 +1,886 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<Title> Tango Device Server User's Guide </Title>
+   <META NAME="GENERATOR" CONTENT="Mozilla/3.01Gold (X11; I; HP-UX B.10.20 9000/735) [Netscape]">
+</HEAD>
+<BODY TEXT="#000000" BGCOLOR="#FFFFFF" LINK="#0000FF" VLINK="#FF0000" ALINK="#FF0000">
+
+<P><!-------TITLE------></P>
+<table width="100%" height="20%"><tr>
+<td align=LEFT>
+<FONT COLOR="#0000FF"><FONT SIZE=+4>Synchrotron </FONT></FONT>
+<FONT COLOR="#0000FF"><FONT SIZE=+4>Soleil</FONT></FONT>
+<H5>Saint-Aubin - BP 48 91192 GIF-sur-YVETTE CEDEX<BR>
+</td><td>
+<A href="http://www.synchrotron-soleil.fr/">
+<IMG  SRC="http://controle/images/logo-150.gif" 
+		ALT="SOLEIL Logo" ALIGN=RIGHT border="0"></A>
+</td></tr></table>
+
+<HR WIDTH="100%"></H5>
+
+<Br>
+<center>
+<h1>
+Tango Device Server<Br>
+Device Commands Description
+</h1>
+<Br>
+<b>
+Revision: 1.5 - Author: chinkumo
+</b>
+</center>
+
+
+<Br>
+<Br>
+<Br>
+<A NAME="Init"><!-- --></A>
+<A NAME="Init"><!-- --></A>
+<h2>1 - Init</h2>
+<ul>
+<Li><Strong>Description: </Strong> This commands re-initialise a device keeping the same network connection.<Br>
+After an Init command executed on a device, it is not necessary for client to re-connect to the device.<Br>
+This command first calls the device <i> delete_device() </i>method and then execute its <i> init_device()</i> method.<Br>
+For C++ device server, all the memory allocated in the <i> nit_device() </i> method must be freed in the <i> delete_device() </i> method.<Br>
+The language device desctructor automatically calls the <i> delete_device() </i> method.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : none.<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_VOID</Strong>
+ : none.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="State"><!-- --></A>
+<A NAME="State"><!-- --></A>
+<h2>2 - State</h2>
+<ul>
+<Li><Strong>Description: </Strong> This command gets the device state (stored in its <i>device_state</i> data member) and returns it to the caller.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : none.<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_STATE</Strong>
+ : State Code<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="Status"><!-- --></A>
+<A NAME="Status"><!-- --></A>
+<h2>3 - Status</h2>
+<ul>
+<Li><Strong>Description: </Strong> This command gets the device status (stored in its <i>device_status</i> data member) and returns it to the caller.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : none.<Br>&nbsp
+<Li><Strong>Argout:<Br>CONST_DEV_STRING</Strong>
+ : Status descrition<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetInfo"><!-- --></A>
+<A NAME="GetInfo"><!-- --></A>
+<h2>4 - GetInfo</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns misc informations about the database and a set of parameters characterizing the connection.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_STRING</Strong>
+ : The informations that characterize the database<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetHost"><!-- --></A>
+<A NAME="GetHost"><!-- --></A>
+<h2>5 - GetHost</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the connected database host identifier.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_STRING</Strong>
+ : The connected database host identifier<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetUser"><!-- --></A>
+<A NAME="GetUser"><!-- --></A>
+<h2>6 - GetUser</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the current user's name used for the connection<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_STRING</Strong>
+ : The current user's name used for the connection<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetConnectionState"><!-- --></A>
+<A NAME="GetConnectionState"><!-- --></A>
+<h2>7 - GetConnectionState</h2>
+<ul>
+<Li><Strong>Description: </Strong> Cheks if the connection to HDB is alive<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_BOOLEAN</Strong>
+ : The connection state<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="Reset"><!-- --></A>
+<A NAME="Reset"><!-- --></A>
+<h2>8 - Reset</h2>
+<ul>
+<Li><Strong>Description: </Strong> <Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_STRING</Strong>
+ : The user name for the connection<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttDefinitionData"><!-- --></A>
+<A NAME="GetAttDefinitionData"><!-- --></A>
+<h2>9 - GetAttDefinitionData</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns an array containing the differents definition informations for the given attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : Differents definition informations for the given attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttId"><!-- --></A>
+<A NAME="GetAttId"><!-- --></A>
+<h2>10 - GetAttId</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets for a specified attribute its ID as defined in HDB<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The HDB's ID that characterize the given attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttNameAll"><!-- --></A>
+<A NAME="GetAttNameAll"><!-- --></A>
+<h2>11 - GetAttNameAll</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets whole list of the attributes registered in HDB<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The whole list of the attributes registered in HDB<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttNameFacility"><!-- --></A>
+<A NAME="GetAttNameFacility"><!-- --></A>
+<h2>12 - GetAttNameFacility</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets whole list of the attributes registered in HDB and that belong to the current facility.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The whole list of the attributes registered in HDB ,resp TDB), and that belong to the current facility.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttNameFilterFormat"><!-- --></A>
+<A NAME="GetAttNameFilterFormat"><!-- --></A>
+<h2>13 - GetAttNameFilterFormat</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the list of <I>HDB</I> registered attributes for the given format<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_SHORT</Strong>
+ : A format [0 -> scalar - 1 -> spectrum - 2 -> image]<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The filtered list of attributes registered in HDB.  The filtering is made according to the given format [0 -> scalar - 1 -> spectrum - 2 -> image]<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttNameFilterType"><!-- --></A>
+<A NAME="GetAttNameFilterType"><!-- --></A>
+<h2>14 - GetAttNameFilterType</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the list of <I>HDB</I> registered attributes for the given type<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_SHORT</Strong>
+ : A type [2 -> Tango::DevShort | 3 -> Tango::DevLong | 5 -> Tango::DevDouble and 8 -> Tango::DevString]<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The filtered list of attributes registered in HDB.  The filtering is made according to the given type [2 -> Tango::DevShort | 3 -> Tango::DevLong | 5 -> Tango::DevDouble and 8 -> Tango::DevString]<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttCountAll"><!-- --></A>
+<A NAME="GetAttCountAll"><!-- --></A>
+<h2>15 - GetAttCountAll</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the total number of attributes defined in HDB.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The total number of attributes defined in HDB<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttCountFilterFormat"><!-- --></A>
+<A NAME="GetAttCountFilterFormat"><!-- --></A>
+<h2>16 - GetAttCountFilterFormat</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the total number of attributes defined in HDB with the given format.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_SHORT</Strong>
+ : A format [0 -> scalar - 1 -> spectrum - 2 -> image]<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The total number of attributes defined in HDB with the given format [0 -> scalar - 1 -> spectrum - 2 -> image]<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttCountFilterType"><!-- --></A>
+<A NAME="GetAttCountFilterType"><!-- --></A>
+<h2>17 - GetAttCountFilterType</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the total number of attributes defined in HDB with the given type.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_SHORT</Strong>
+ : A type [2 -> Tango::DevShort | 3 -> Tango::DevLong | 5 -> Tango::DevDouble and 8 -> Tango::DevString]<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The total number of attributes defined in HDB with the given type [2 -> Tango::DevShort | 3 -> Tango::DevLong | 5 -> Tango::DevDouble and 8 -> Tango::DevString]<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetDomains"><!-- --></A>
+<A NAME="GetDomains"><!-- --></A>
+<h2>18 - GetDomains</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets all the registered domains.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The registered domains<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetFamilies"><!-- --></A>
+<A NAME="GetFamilies"><!-- --></A>
+<h2>19 - GetFamilies</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets all the registered families<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The registered families<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetFamiliesByDomain"><!-- --></A>
+<A NAME="GetFamiliesByDomain"><!-- --></A>
+<h2>20 - GetFamiliesByDomain</h2>
+<ul>
+<Li><Strong>Description: </Strong> <Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The given domain<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The registered families for the given domain<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetMembers"><!-- --></A>
+<A NAME="GetMembers"><!-- --></A>
+<h2>21 - GetMembers</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets all the registered members<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The registered members<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetMembersByDomainFamily"><!-- --></A>
+<A NAME="GetMembersByDomainFamily"><!-- --></A>
+<h2>22 - GetMembersByDomainFamily</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets all the registered members for the given domain and family<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The given domain and family<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The registered members for the given domain and family<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttPropertiesData"><!-- --></A>
+<A NAME="GetAttPropertiesData"><!-- --></A>
+<h2>23 - GetAttPropertiesData</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the differents properties informations for the given attribute<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : An array containing the differents properties for the given attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetCurrentArchivedAtt"><!-- --></A>
+<A NAME="GetCurrentArchivedAtt"><!-- --></A>
+<h2>24 - GetCurrentArchivedAtt</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the list of attributes that are being archived in <I>HDB</I><Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The list of attributes that are being archived<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="IsArchived"><!-- --></A>
+<A NAME="IsArchived"><!-- --></A>
+<h2>25 - IsArchived</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns "true" if the attribute of given name is currently archived, "false" otherwise.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_BOOLEAN</Strong>
+ : true if the given attribute is being archived<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetArchivingMode"><!-- --></A>
+<A NAME="GetArchivingMode"><!-- --></A>
+<h2>26 - GetArchivingMode</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets the archiving mode used for the specified attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The archiving mode used for the specified attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarData"><!-- --></A>
+<A NAME="GetAttScalarData"><!-- --></A>
+<h2>27 - GetAttScalarData</h2>
+<ul>
+<Li><Strong>Description: </Strong> Gets all the data archieved for an attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataBeetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataBeetweenDates"><!-- --></A>
+<h2>28 - GetAttScalarDataBeetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves data beetwen two dates, for a given scalar attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupThanBeetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataSupThanBeetweenDates"><!-- --></A>
+<h2>29 - GetAttScalarDataSupThanBeetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves data beetwen two dates (date_1 & date_2) - Data are higher than the given value x.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupAndInfThanBeetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataSupAndInfThanBeetweenDates"><!-- --></A>
+<h2>30 - GetAttScalarDataSupAndInfThanBeetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves data beetwen two dates (date_1 & date_2) - Data are higher than the given value x AND lower than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the upper limit, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfOrSupThanBeetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataInfOrSupThanBeetweenDates"><!-- --></A>
+<h2>31 - GetAttScalarDataInfOrSupThanBeetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves data beetwen two dates (date_1 & date_2) - Data are lower than the given value x OR higher than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the upper limit, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfThanBeetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataInfThanBeetweenDates"><!-- --></A>
+<h2>32 - GetAttScalarDataInfThanBeetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves data beetwen two dates (date_1 & date_2) - Data are lower than the given value x.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the upper limit, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataLastN"><!-- --></A>
+<A NAME="GetAttScalarDataLastN"><!-- --></A>
+<h2>33 - GetAttScalarDataLastN</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves the last n archived data, for a given scalar attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name and the number of wished data<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfThan"><!-- --></A>
+<A NAME="GetAttScalarDataInfThan"><!-- --></A>
+<h2>34 - GetAttScalarDataInfThan</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves all the data that are lower than the given value x.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the upper limit<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupThan"><!-- --></A>
+<A NAME="GetAttScalarDataSupThan"><!-- --></A>
+<h2>35 - GetAttScalarDataSupThan</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves all the data that are higher than the given value x.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name and the  lower limit<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfOrSupThan"><!-- --></A>
+<A NAME="GetAttScalarDataInfOrSupThan"><!-- --></A>
+<h2>36 - GetAttScalarDataInfOrSupThan</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves all data that are lower than the given value x OR higher than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit and the upper limit<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupAndInfThan"><!-- --></A>
+<A NAME="GetAttScalarDataSupAndInfThan"><!-- --></A>
+<h2>37 - GetAttScalarDataSupAndInfThan</h2>
+<ul>
+<Li><Strong>Description: </Strong> Retrieves all data that are higher than the given value x AND lower than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit and the upper limit<Br>&nbsp
+<Li><Strong>Argout:<Br>DEVVAR_DOUBLESTRINGARRAY</Strong>
+ : All the wished data<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataMax"><!-- --></A>
+<A NAME="GetAttScalarDataMax"><!-- --></A>
+<h2>38 - GetAttScalarDataMax</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the biggest value generated by the attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_DOUBLE</Strong>
+ : The biggest value generated by the attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataAvg"><!-- --></A>
+<A NAME="GetAttScalarDataAvg"><!-- --></A>
+<h2>39 - GetAttScalarDataAvg</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the average value generated by the given attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_DOUBLE</Strong>
+ : The average of the values generated by the attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataMin"><!-- --></A>
+<A NAME="GetAttScalarDataMin"><!-- --></A>
+<h2>40 - GetAttScalarDataMin</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the smallest scalar value generated by the attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : The attribute's name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_DOUBLE</Strong>
+ : The smallest value generated by the attribute<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataMaxBetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataMaxBetweenDates"><!-- --></A>
+<h2>41 - GetAttScalarDataMaxBetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the biggest value generated between the two given dates.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_DOUBLE</Strong>
+ : The beginning date and the ending date<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataAvgBetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataAvgBetweenDates"><!-- --></A>
+<h2>42 - GetAttScalarDataAvgBetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the average value generated by the given attribute and between the two given dates.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_DOUBLE</Strong>
+ : The beginning date and the ending date<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataMinBetweenDates"><!-- --></A>
+<A NAME="GetAttScalarDataMinBetweenDates"><!-- --></A>
+<h2>43 - GetAttScalarDataMinBetweenDates</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the smallest scalar value generated by the given attribute and between two given dates<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS)<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_DOUBLE</Strong>
+ : The beginning date and the ending date<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetDomainsCount"><!-- --></A>
+<A NAME="GetDomainsCount"><!-- --></A>
+<h2>44 - GetDomainsCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of distinct registered domains.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of distinct registered domains.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetFamiliesCount"><!-- --></A>
+<A NAME="GetFamiliesCount"><!-- --></A>
+<h2>45 - GetFamiliesCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of distinct registered families.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of distinct registered families.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetFamiliesByDomainCount"><!-- --></A>
+<A NAME="GetFamiliesByDomainCount"><!-- --></A>
+<h2>46 - GetFamiliesByDomainCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of distinct registered families for a given domain.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : A domain name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of distinct registered families for a given domain.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetMembersCount"><!-- --></A>
+<A NAME="GetMembersCount"><!-- --></A>
+<h2>47 - GetMembersCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of distinct members.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_VOID</Strong>
+ : <Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of distinct members.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetMembersByDomainFamilyCount"><!-- --></A>
+<A NAME="GetMembersByDomainFamilyCount"><!-- --></A>
+<h2>48 - GetMembersByDomainFamilyCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of distinct registered members for the given domain and family.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : A domain name, a family name<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of distinct registered members for the given domain and family.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttributesByDomainFamilyMembersCount"><!-- --></A>
+<A NAME="GetAttributesByDomainFamilyMembersCount"><!-- --></A>
+<h2>49 - GetAttributesByDomainFamilyMembersCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of registered the attributes for a given domain, family, member.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : A domain name, a family name, a member name.<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of registered the attributes for a given  domain, family, member.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataCount"><!-- --></A>
+<A NAME="GetAttScalarDataCount"><!-- --></A>
+<h2>50 - GetAttScalarDataCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of the data archieved for an attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEV_STRING</Strong>
+ : An attribute name.<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of the data archieved for an attribute.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataBetweenDatesCount"><!-- --></A>
+<A NAME="GetAttScalarDataBetweenDatesCount"><!-- --></A>
+<h2>51 - GetAttScalarDataBetweenDatesCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data beetwen two dates and, for a given scalar attribute.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the beginning ,DD-MM-YYYY HH24:MI:SS) date and the ending date ,DD-MM-YYYY HH24:MI:SS).<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of data beetwen two dates and, for a given scalar attribute.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfOrSupThanBetweenDatesCount"><!-- --></A>
+<A NAME="GetAttScalarDataInfOrSupThanBetweenDatesCount"><!-- --></A>
+<h2>52 - GetAttScalarDataInfOrSupThanBetweenDatesCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data beetwen two dates (date_1 & date_2).
+Data are lower than the given value x OR higher than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the upper limit, the beginning date ,DD-MM-YYYY HH24:MI:SS) and the ending date ,DD-MM-YYYY HH24:MI:SS).<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of scalar data lower than the given value x OR higher than the given value y, beetwen two dates and for the specified attribute.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupThanBetweenDatesCount"><!-- --></A>
+<A NAME="GetAttScalarDataSupThanBetweenDatesCount"><!-- --></A>
+<h2>53 - GetAttScalarDataSupThanBetweenDatesCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data higher than the given value y, and beetwen two dates (date_1 & date_2).<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the beginning date  ,DD-MM-YYYY HH24:MI:SS) and the ending date  ,DD-MM-YYYY HH24:MI:SS).<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of data higher than the given value y, and beetwen two dates ,date_1 & date_2).<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupAndInfThanBetweenDatesCount"><!-- --></A>
+<A NAME="GetAttScalarDataSupAndInfThanBetweenDatesCount"><!-- --></A>
+<h2>54 - GetAttScalarDataSupAndInfThanBetweenDatesCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data higher than the given value x, (AND) lower than the given value y, and beetwen two dates (date_1 & date_2).<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the upper limit, the beginning date ,DD-MM-YYYY HH24:MI:SS) and the ending date ,DD-MM-YYYY HH24:MI:SS).<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of data higher than the given value x, ,AND) lower than the given value y, and beetwen two dates ,date_1 & date_2).<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfThanBetweenDatesCount"><!-- --></A>
+<A NAME="GetAttScalarDataInfThanBetweenDatesCount"><!-- --></A>
+<h2>55 - GetAttScalarDataInfThanBetweenDatesCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number data lower than the given value x, and beetwen two dates (date_1 & date_2).<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit, the upper limit, the beginning date ,DD-MM-YYYY HH24:MI:SS) and the ending date ,DD-MM-YYYY HH24:MI:SS).<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number data lower than the given value x, and beetwen two dates ,date_1 & date_2).<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfThanCount"><!-- --></A>
+<A NAME="GetAttScalarDataInfThanCount"><!-- --></A>
+<h2>56 - GetAttScalarDataInfThanCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data lower than the given value.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name and the  upper limit.<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of scalar data lower than the given value and for the specified attribute.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupThanCount"><!-- --></A>
+<A NAME="GetAttScalarDataSupThanCount"><!-- --></A>
+<h2>57 - GetAttScalarDataSupThanCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data higher than the given value.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name and the  lower limit.<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of data higher than the given value.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataInfOrSupThanCount"><!-- --></A>
+<A NAME="GetAttScalarDataInfOrSupThanCount"><!-- --></A>
+<h2>58 - GetAttScalarDataInfOrSupThanCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns the number of data lower than the given value x OR higher than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit and the upper limit<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The number of scalar data lower than the given value x OR higher than the given value y.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<A NAME="GetAttScalarDataSupAndInfThanCount"><!-- --></A>
+<A NAME="GetAttScalarDataSupAndInfThanCount"><!-- --></A>
+<h2>59 - GetAttScalarDataSupAndInfThanCount</h2>
+<ul>
+<Li><Strong>Description: </Strong> Returns data that are highter than the given value x AND lower than the given value y.<Br>&nbsp
+<Li><Strong>Argin:<Br>DEVVAR_STRINGARRAY</Strong>
+ : The attribute's name, the lower limit and the upper limit<Br>&nbsp
+<Li><Strong>Argout:<Br>DEV_SHORT</Strong>
+ : The data that are highter than the given value x AND lower than the given value y.<Br>&nbsp
+<Li><Strong>Command allowed for: </Strong><Ul>
+</Ul>
+<Br>&nbsp
+</ul><Br>
+<Br>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+<HTML>
+<HEAD>
+<Title> Tango Device Server User's Guide </Title>
+   <META NAME="GENERATOR" CONTENT="Mozilla/3.01Gold (X11; I; HP-UX B.10.20 9000/735) [Netscape]">
+</HEAD>
+<BODY TEXT="#000000" BGCOLOR="#FFFFFF" LINK="#0000FF" VLINK="#FF0000" ALINK="#FF0000">
+
+<P><!-------TITLE------></P>
+
+<Center>
+<Br>
+<HR WIDTH="100%"></H5>
+<H3>(c) SOLEIL : Groupe ICA Contrôle et Acquisitions </H33>
+</Center>
+</body>
+</html>

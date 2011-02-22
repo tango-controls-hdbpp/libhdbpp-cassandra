@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+
+  <parent>
+    <artifactId>super-pom-java</artifactId>
+    <groupId>fr.soleil</groupId>
+    <version>RELEASE</version>
+  </parent>
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.soleil.gui</groupId>
+  <artifactId>sgadArchivingGUI</artifactId>
+  <version>1.4.1</version>
+  <name>Sgad</name>
+
+  	<scm>
+  	   	<connection>${scm.connection.cvs.tango-cs}:archiving/tool/common/sgadArchivingGUI</connection>
+		<developerConnection>${scm.developerConnection.cvs.tango-cs}:archiving/tool/common/sgadArchivingGUI</developerConnection>
+		<url>${scm.url.cvs.tango-cs}/archiving/tool/common/sgadArchivingGUI/</url>
+ 	</scm>
+
+   <build>
+   <plugins>
+    	<plugin>
+    		<groupId>fr.soleil.maven.plugins</groupId>
+    		<artifactId>maven-script-plugin</artifactId>
+    		<executions>
+    			<execution>
+    				<id>install</id>
+    				<goals>
+    					<goal>generate</goal>
+    				</goals>
+    			</execution>
+    		</executions>
+    		<configuration>
+    			<mainClass>fr.soleil.sgad.SGAD_UI</mainClass>
+    		</configuration>
+    	</plugin>
+    </plugins>
+	</build>
+</project>
+

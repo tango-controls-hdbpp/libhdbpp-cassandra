@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<artifactId>super-pom-java</artifactId>
+		<groupId>fr.soleil</groupId>
+		<version>RELEASE</version>
+	</parent>
+
+	<groupId>fr.soleil.gui</groupId>
+	<artifactId>mamboArchivingGUI</artifactId>
+	<name>Mambo</name>
+	<version>2.4.6</version>
+	<scm>
+		<connection>
+			${scm.connection.cvs.tango-cs}:archiving/tool/hdbtdb/mamboArchivingGUI
+		</connection>
+		<developerConnection>
+			${scm.developerConnection.cvs.tango-cs}:archiving/tool/hdbtdb/mamboArchivingGUI
+		</developerConnection>
+		<url>
+			${scm.url.cvs.tango-cs}/archiving/tool/hdbtdb/mamboArchivingGUI/
+		</url>
+	</scm>
+	<build>
+
+		<plugins>
+			<!--
+				<plugin> <groupId>fr.soleil.maven.plugins</groupId> <artifactId>maven-cvs-plugin</artifactId> <configuration>
+				<enable>false</enable> </configuration> </plugin>
+			-->
+			<plugin>
+				<groupId>fr.soleil.maven.plugins</groupId>
+				<artifactId>maven-script-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>install</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<mainClass>fr.soleil.mambo.Mambo</mainClass>
+				</configuration>
+			</plugin>
+
+
+		</plugins>
+	</build>
+	<dependencies>
+		<dependency>
+			<groupId>fr.soleil.lib</groupId>
+			<artifactId>hdbtdbArchivingApi</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib.SoleilUtilities
+			</groupId>
+			<artifactId>Application</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib.SoleilUtilities
+			</groupId>
+			<artifactId>Docking</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib.SoleilUtilities
+			</groupId>
+			<artifactId>TangoCore</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib.SoleilUtilities
+			</groupId>
+			<artifactId>Swing</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib.comete</groupId>
+			<artifactId>CometeWidget</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib.comete</groupId>
+			<artifactId>TangoDAO</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.lib</groupId>
+			<artifactId>commonArchivingApi</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>fr.soleil.gui</groupId>
+			<artifactId>commonArchivingGUI</artifactId>
+		</dependency>
+
+	</dependencies>
+</project>

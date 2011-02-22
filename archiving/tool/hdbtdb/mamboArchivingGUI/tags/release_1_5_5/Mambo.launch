@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
+<listEntry value="/mamboArchivingGUI/src/main/java/fr/soleil/mambo/Mambo.java"/>
+</listAttribute>
+<listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
+<listEntry value="1"/>
+</listAttribute>
+<booleanAttribute key="org.eclipse.debug.core.appendEnvironmentVariables" value="true"/>
+<listAttribute key="org.eclipse.debug.ui.favoriteGroups">
+<listEntry value="org.eclipse.debug.ui.launchGroup.run"/>
+<listEntry value="org.eclipse.debug.ui.launchGroup.debug"/>
+</listAttribute>
+<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="fr.soleil.mambo.Mambo"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="d:\myMamboSQL hdbmanager hdbmanager tdbmanager tdbmanager expert"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="mamboArchivingGUI"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-DTANGO_HOST=strauss:20001"/>
+</launchConfiguration>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project>
+	<parent>
+		<groupId>fr.soleil</groupId>
+		<artifactId>super-pom</artifactId>
+		<version>1.1</version>
+	</parent>
+	
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>fr.soleil.lib</groupId>
+  <artifactId>commonArchivingApi</artifactId>
+  <version>1.4.1</version>
+  <name>CommonArchivingAPI</name>
+  
+  <scm>
+		<connection>
+			scm:cvs:pserver:tango-cs.cvs.sourceforge.net:/cvsroot/tango-cs:archiving/api/commonArchivingApi
+		</connection>
+		<url>
+			http://tango-cs.cvs.sourceforge.net/tango-cs/archiving/api/commonArchivingApi/
+		</url>
+	</scm>
+	
+	<!-- Common Archiving Api dependencies -->
+    <dependencies>
+        <dependency>
+              <groupId>fr.esrf.tango</groupId>
+              <artifactId>TangORB</artifactId>
+              <version>${TangORB.version}</version>
+        </dependency>
+    </dependencies>
+</project>
