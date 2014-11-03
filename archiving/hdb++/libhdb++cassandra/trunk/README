@@ -1,0 +1,3 @@
+To compile this library, you will need to download and install the DataStax Cassandra C++ Driver ( https://github.com/datastax/cpp-driver ).
+
+You will need to update ../../Make-hdb++ file in order to update CASSANDRA_INC and CASSANDRA_LIB variables to point to the directory where the Datastax c++ driver is installed.
