@@ -1,3 +1,5 @@
 To compile this library, you will need to download and install the DataStax Cassandra C++ Driver ( https://github.com/datastax/cpp-driver ).
+The Makefile assumes that by default, the cassandra driver root directory is ../../cassandra/cppDriver/
+This version was tested with the version 1.0.0-Beta 4 of the Datastax Cassandra C++ driver and with its dependency with libuv version 0.10.
 
 You will need to update ../../Make-hdb++ file in order to update CASSANDRA_INC and CASSANDRA_LIB variables to point to the directory where the Datastax c++ driver is installed.
