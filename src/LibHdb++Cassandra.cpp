@@ -41,7 +41,7 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 	mp_cluster = cass_cluster_new();
 #ifdef _CASS_LIB_DEBUG
   	cout << __func__<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
-  	//cass_cluster_set_log_level(mp_cluster,CASS_LOG_DEBUG);
+  	//cass_log_set_level(CASS_LOG_DEBUG);
 #endif
 	cass_cluster_set_contact_points(mp_cluster,contact_points.c_str());
 
@@ -67,6 +67,7 @@ HdbPPCassandra::~HdbPPCassandra()
 	cass_future_wait(close_future);
 	cass_future_free(close_future);
 	cass_cluster_free(mp_cluster);
+	cass_session_free(mp_session);
 }
 
 void HdbPPCassandra::print_error(CassFuture* future)
@@ -78,8 +79,9 @@ void HdbPPCassandra::print_error(CassFuture* future)
 CassError HdbPPCassandra::connect_session()
 {
 	CassError rc = CASS_OK;
-	CassFuture* future = cass_cluster_connect(mp_cluster);
-	mp_session = NULL;
+	mp_session = cass_session_new();
+	CassFuture* future = cass_session_connect(mp_session, mp_cluster);
+
 
 	cass_future_wait(future);
 	rc = cass_future_error_code(future);
@@ -87,10 +89,6 @@ CassError HdbPPCassandra::connect_session()
 	{
     	print_error(future);
 	}
-	else
-	{
-		mp_session = cass_future_get_session(future);
-  	}
 	cass_future_free(future);
 	return rc;
 }
@@ -119,7 +117,7 @@ CassError HdbPPCassandra::execute_query(const char* query)
 bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 {
 	// First look into the cache
-	map<string,UuidWrapper>::iterator it = attr_ID_map.find(fqdn_attr_name);
+	map<string,CassUuid>::iterator it = attr_ID_map.find(fqdn_attr_name);
 	if(it == attr_ID_map.end())
 	{
 		// if not already present in cache, look for ID in the DB*/
@@ -131,7 +129,7 @@ bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 	}
 	else
 	{
-		memcpy(ID,it->second.getUuid(),sizeof(CassUuid));
+		ID = it->second;
 	}
 	return true;
 }
@@ -177,14 +175,13 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 			cout << __func__<< ": SUCCESS in query: " << query_str.str() << endl;
 #endif
 			const CassRow* row = cass_iterator_get_row(iterator);
-			cass_value_get_uuid(cass_row_get_column(row, 0), ID);
+			cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
 #ifdef _CASS_LIB_DEBUG
 			cout << __func__<< "(" << fqdn_attr_name << "): ID found " << endl;
 #endif
 			found = true;
-			UuidWrapper IDWrap = ID;
-			attr_ID_map.insert(make_pair(fqdn_attr_name,IDWrap));
-			map<string,UuidWrapper>::iterator it = attr_ID_map.find(fqdn_attr_name);
+			attr_ID_map.insert(make_pair(fqdn_attr_name,ID));
+			map<string,CassUuid>::iterator it = attr_ID_map.find(fqdn_attr_name);
 			if(it == attr_ID_map.end())
 			{
 				char uuidStr[CASS_UUID_STRING_LENGTH];
@@ -255,7 +252,7 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 #endif
             // TODO Improve error handling
 			const CassRow* row = cass_iterator_get_row(iterator);
-			cass_value_get_uuid(cass_row_get_column(row, 0), ID);
+			cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
 			cass_value_get_string(cass_row_get_column(row, 1), &db_type_res);
 			memcpy(db_type_buffer, db_type_res.data, db_type_res.length);
       		db_type_buffer[db_type_res.length] = '\0';
@@ -1396,8 +1393,9 @@ int HdbPPCassandra::configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING
 	CassFuture* future = NULL;
 	statement = cass_statement_new(cass_string_init(insert_str.str().c_str()), 4);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	CassUuidGen* uuid_gen = cass_uuid_gen_new();
 	CassUuid uuid;
-	cass_uuid_generate_time(uuid);
+	cass_uuid_gen_time(uuid_gen,&uuid);
 	cass_statement_bind_uuid(statement, 0, uuid);
 	cass_statement_bind_string(statement, 1, cass_string_init(facility.c_str()));
 	cass_statement_bind_string(statement, 2, cass_string_init(attr_name.c_str()));
@@ -1413,6 +1411,7 @@ int HdbPPCassandra::configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING
 
 	cass_future_free(future);
   	cass_statement_free(statement);
+	cass_uuid_gen_free(uuid_gen);
 
 	if(rc != CASS_OK)
 	{
@@ -1525,7 +1524,9 @@ string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DE
 	          << SC_COL_INS_TIME_US << ","
 	          << SC_COL_QUALITY << ","
 	          << SC_COL_ERROR_DESC;
-
+	
+	// TODO: store dim_x, dim_y for spectrum attributes
+	
     // We don't insert the value if the value is null because
     // it would create an unnecessary tombstone in Cassandra
     if(!isNull)

@@ -32,21 +32,6 @@
 namespace HDBPP
 {
 
-class UuidWrapper
-{
-	public:
-		UuidWrapper(CassUuid uuid)
-		{
-			memcpy(m_uuid,uuid, sizeof(CassUuid));
-		};
-		~UuidWrapper()
-		{
-		};
-		CassUuid & getUuid() { return m_uuid; };
-	private:
-		CassUuid m_uuid;
-};
-
 class HdbPPCassandra : public AbstractDB
 {
 public:
@@ -145,7 +130,7 @@ private:
 	CassCluster* mp_cluster;
 	CassSession* mp_session;
 	string m_keyspace_name;
-	map<string,UuidWrapper> attr_ID_map;
+	map<string,CassUuid> attr_ID_map;
 
 public:
 	~HdbPPCassandra();
