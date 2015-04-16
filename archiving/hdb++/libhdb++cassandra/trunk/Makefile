@@ -2,14 +2,14 @@
 include ../../Make-hdb++.in
 
 CXXFLAGS += -Wall -DRELEASE='"$HeadURL: $ "' \
-		-I$(CASSANDRA_INC) -I$(TANGO_INC) -I$(OMNI_INC) -I$(LIBHDB_INC)
+		-I$(DBIMPL_INC) -I$(TANGO_INC) -I$(OMNI_INC) -I$(LIBHDB_INC)
 CXX = g++
 
 
 ##############################################
 # support for shared libray versioning
 #
-LFLAGS_SONAME = $(CASSANDRA_LIB) -Wl,-soname,
+LFLAGS_SONAME = $(DBIMPL_LIB) -Wl,-soname,
 SHLDFLAGS = -shared
 BASELIBNAME       =  libhdb++cassandra
 SHLIB_SUFFIX = so
