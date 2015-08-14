@@ -44,6 +44,9 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
   	//cass_log_set_level(CASS_LOG_DEBUG);
 #endif
 	cass_cluster_set_contact_points(mp_cluster,contact_points.c_str());
+	
+	/* Latency-aware routing enabled with the default settings */
+	cass_cluster_set_latency_aware_routing(mp_cluster, cass_true);
 
 	CassError rc = CASS_OK;
 	rc = connect_session();
@@ -72,8 +75,10 @@ HdbPPCassandra::~HdbPPCassandra()
 
 void HdbPPCassandra::print_error(CassFuture* future)
 {
-	CassString message = cass_future_error_message(future);
-	fprintf(stderr, "Cassandra Error: %.*s\n", (int)message.length, message.data);
+	const char * message;
+	size_t message_length;
+	cass_future_error_message(future,&message,&message_length);
+	fprintf(stderr, "Cassandra Error: %.*s\n", (int)message_length, message);
 }
 
 CassError HdbPPCassandra::connect_session()
@@ -97,7 +102,7 @@ CassError HdbPPCassandra::execute_query(const char* query)
 {
 	CassError rc = CASS_OK;
 	CassFuture* future = NULL;
-	CassStatement* statement = cass_statement_new(cass_string_init(query), 0);
+	CassStatement* statement = cass_statement_new(query, 0);
 
 	future = cass_session_execute(mp_session, statement);
 	cass_future_wait(future);
@@ -144,15 +149,15 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 	facility = add_domain(facility);
 
 	query_str << "SELECT " << CONF_COL_ID << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME <<
-			" WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?";
+			" WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
 
 	CassError rc = CASS_OK;
 	CassStatement* statement = NULL;
 	CassFuture* future = NULL;
 
-	statement = cass_statement_new(cass_string_init(query_str.str().c_str()), 2);
-	cass_statement_bind_string(statement, 0, cass_string_init(attr_name.c_str()));
-	cass_statement_bind_string(statement, 1, cass_string_init(facility.c_str()));
+	statement = cass_statement_new(query_str.str().c_str(), 2);
+	cass_statement_bind_string(statement, 0, attr_name.c_str());
+	cass_statement_bind_string(statement, 1, facility.c_str());
 
 	future = cass_session_execute(mp_session, statement);
 	cass_future_wait(future);
@@ -213,7 +218,7 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 	//string facility_with_domain = add_domain(facility);
 
 	query_str << "SELECT " << CONF_COL_ID << "," << CONF_COL_TYPE << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME <<
-			" WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?";
+			" WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
 
 #ifdef _CASS_LIB_DEBUG
     cout << __func__ << ": query = " << query_str.str().c_str() << endl;
@@ -225,17 +230,16 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 	CassStatement* statement = NULL;
 	CassFuture* future = NULL;
 
-	statement = cass_statement_new(cass_string_init(query_str.str().c_str()), 2);
-	cass_statement_bind_string(statement, 0, cass_string_init2(attr.data(),attr.size()));
-	cass_statement_bind_string(statement, 1, cass_string_init2(facility.data(), facility.size()));
+	statement = cass_statement_new(query_str.str().c_str(), 2);
+	cass_statement_bind_string(statement, 0, attr.c_str());
+	cass_statement_bind_string(statement, 1, facility.c_str());
 
 	future = cass_session_execute(mp_session, statement);
 	cass_future_wait(future);
 
 	rc = cass_future_error_code(future);
 	bool found = false;
-	CassString db_type_res;
-	char db_type_buffer[256];
+	string db_type = "";
 	if(rc != CASS_OK)
 	{
 		cout<< __func__ << ": ERROR in query=" << query_str.str() << endl;
@@ -253,9 +257,10 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
             // TODO Improve error handling
 			const CassRow* row = cass_iterator_get_row(iterator);
 			cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
-			cass_value_get_string(cass_row_get_column(row, 1), &db_type_res);
-			memcpy(db_type_buffer, db_type_res.data, db_type_res.length);
-      		db_type_buffer[db_type_res.length] = '\0';
+			const char * db_type_res;
+			size_t db_type_res_length;
+			cass_value_get_string(cass_row_get_column(row, 1), &db_type_res, &db_type_res_length);
+			db_type = string(db_type_res,db_type_res_length);
 			found = true;
     	}
 		cass_result_free(result);
@@ -269,10 +274,9 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 		cout << __func__<< ": NO RESULT in query: " << query_str.str() << endl;
 		return -1;
 	}
-	string db_type = db_type_buffer;
 	if(db_type != attr_type)
 	{
-		cout << __func__<< ": FOUND ID for " << facility << "/" << attr << " but different type: attr_type="<<attr_type<<"-db_type="<<db_type_buffer << endl;
+		cout << __func__<< ": FOUND ID for " << facility << "/" << attr << " but different type: attr_type="<<attr_type<<"-db_type="<<db_type << endl;
 		return -2;
 	}
 	else
@@ -612,7 +616,7 @@ void HdbPPCassandra::extract_and_bind_string(CassStatement* statement,
 	{
 		if(data_format == Tango::SCALAR)
 		{
-			cass_statement_bind_string(statement, param_index, cass_string_init(val[0].c_str()));
+			cass_statement_bind_string(statement, param_index, val[0].c_str());
 		}
 		else
 		{
@@ -621,7 +625,7 @@ void HdbPPCassandra::extract_and_bind_string(CassStatement* statement,
 			readValuesList = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
 			for(unsigned int i = 0; i < val.size(); i++)
 			{
-				cass_collection_append_string(readValuesList, cass_string_init(val[i].c_str()));
+				cass_collection_append_string(readValuesList, val[i].c_str());
 			}
 			cass_statement_bind_collection(statement, param_index, readValuesList);
 			cass_collection_free(readValuesList);
@@ -944,12 +948,12 @@ int HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, con
 	query_str   << "SELECT " << HISTORY_COL_EVENT
                 << " FROM " << m_keyspace_name << "." << HISTORY_TABLE_NAME
                 << " WHERE " << HISTORY_COL_ID << " = ?"
-                << " ORDER BY " << HISTORY_COL_TIME << " DESC LIMIT 1";
+                << " ORDER BY " << HISTORY_COL_TIME << " DESC LIMIT 1" << ends;
 
 
     CassError rc = CASS_OK;
 
-	statement = cass_statement_new(cass_string_init(query_str.str().c_str()), 1);
+	statement = cass_statement_new(query_str.str().c_str(), 1);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
 	cass_statement_bind_uuid(statement, 0, id); // att_conf_id
 
@@ -958,8 +962,7 @@ int HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, con
 
 	rc = cass_future_error_code(future);
 	bool found = false;
-	CassString last_event_res = cass_string_init("");
-	char last_event_buffer[256];
+
 	if(rc != CASS_OK)
 	{
 		cout << __func__ << ": ERROR in query=" << query_str.str() << endl;
@@ -975,10 +978,10 @@ int HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, con
 			cout << __func__<< ": SUCCESS in query: " << query_str.str() << endl;
 #endif
 			const CassRow* row = cass_iterator_get_row(iterator);
-			cass_value_get_string(cass_row_get_column(row, 0), &last_event_res);
-            memcpy(last_event_buffer, last_event_res.data, last_event_res.length);
-      		last_event_buffer[last_event_res.length] = '\0';
-      		last_event = last_event_buffer;
+			const char * last_event_res;
+			size_t last_event_res_length;
+			cass_value_get_string(cass_row_get_column(row, 0), &last_event_res, &last_event_res_length);
+			last_event = string(last_event_res,last_event_res_length);
 			found = true;
 #ifdef _CASS_LIB_DEBUG
 			cout << __func__<< "(" << fqdn_attr_name << "): last event = " << last_event << endl;
@@ -1068,7 +1071,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 		}
 		else
 		{
-			attr_r_dim.dim_x = 1;//max_dim_x;//TODO: OK?
+			attr_r_dim.dim_x = 0;//max_dim_x;//TODO: OK?
 			attr_w_dim.dim_x = 0;//max_dim_x;//TODO: OK?
 			attr_r_dim.dim_y = 0;//max_dim_y;//TODO: OK?
 			attr_w_dim.dim_y = 0;//max_dim_y;//TODO: OK?
@@ -1091,7 +1094,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 
 		CassError rc = CASS_OK;
 
-		statement = cass_statement_new(cass_string_init(query_str.c_str()), nbQueryParams);
+		statement = cass_statement_new(query_str.c_str(), nbQueryParams);
 		cass_statement_bind_uuid(statement, 0, ID); // att_conf_id
 		// Compute the period based on the month of the event time
 		struct tm *tms;
@@ -1100,7 +1103,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 			perror ("localtime");
 		char period[11];
 		snprintf(period,11,"%04d-%02d-%02d", tms -> tm_year + 1900,tms -> tm_mon + 1, tms -> tm_mday);
-		cass_statement_bind_string(statement, 1, cass_string_init(period)); // period
+		cass_statement_bind_string(statement, 1, period); // period
 		cass_statement_bind_int64(statement, 2, ev_time); // event_time
 		cass_statement_bind_int32(statement, 3, ev_time_us); // event_time_us
   		cass_statement_bind_int64(statement, 4, rcv_time); // recv_time
@@ -1116,7 +1119,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 		cass_statement_bind_int64(statement, 6, insert_time); // insert_time
 		cass_statement_bind_int32(statement, 7, insert_time_us); // insert_time_us
 		cass_statement_bind_int32(statement, 8, quality); // quality
-		cass_statement_bind_string(statement,9, cass_string_init(error_desc.c_str())); // error description
+		cass_statement_bind_string(statement,9, error_desc.c_str()); // error description
 		int param_index = 10;
 
 		extract_and_bind_rw_values(statement,param_index,data_type,write_type,data_format,data,isNull);
@@ -1184,10 +1187,10 @@ bool HdbPPCassandra::insert_history_event(const string & history_event_name, Cas
 
 	CassStatement* statement = NULL;
 	CassFuture* future = NULL;
-	statement = cass_statement_new(cass_string_init(insert_event_str.str().c_str()), 4);
+	statement = cass_statement_new(insert_event_str.str().c_str(), 4);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
 	cass_statement_bind_uuid(statement, 0, att_conf_id);
-	cass_statement_bind_string(statement, 1, cass_string_init(history_event_name.c_str()));
+	cass_statement_bind_string(statement, 1, history_event_name.c_str());
 	cass_statement_bind_int64(statement, 2, current_time);
 	cass_statement_bind_int32(statement, 3, current_time_us);
 
@@ -1274,12 +1277,13 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 			  << "?,?,"
 			  << "?,?,?,"
 			  << "?,?,?,"
-			  << "?,?,?)";
+			  << "?,?,?)"
+			  << ends;
 
     CassStatement* statement = NULL;
     CassFuture* future = NULL;
     CassError rc = CASS_OK;
-    statement = cass_statement_new(cass_string_init(query_str.str().c_str()), 14);
+    statement = cass_statement_new(query_str.str().c_str(), 14);
     cass_statement_bind_uuid(statement, 0, uuid);
     // Get the current time
     struct timespec ts;
@@ -1298,39 +1302,39 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " label: \"" << data->attr_conf->label.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement, 5, cass_string_init(data->attr_conf->label.c_str())); // label
+    cass_statement_bind_string(statement, 5, data->attr_conf->label.c_str()); // label
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " unit: \"" << data->attr_conf->unit.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement, 6, cass_string_init(data->attr_conf->unit.c_str())); // unit
+    cass_statement_bind_string(statement, 6, data->attr_conf->unit.c_str()); // unit
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " standard unit: \"" << data->attr_conf->standard_unit.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement, 7, cass_string_init(data->attr_conf->standard_unit.c_str())); // standard unit
+    cass_statement_bind_string(statement, 7, data->attr_conf->standard_unit.c_str()); // standard unit
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " display unit: \"" << data->attr_conf->display_unit.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement, 8, cass_string_init(data->attr_conf->display_unit.c_str())); // display unit
+    cass_statement_bind_string(statement, 8, data->attr_conf->display_unit.c_str()); // display unit
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " format: \"" << data->attr_conf->format.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement, 9, cass_string_init(data->attr_conf->format.c_str())); // format
+    cass_statement_bind_string(statement, 9, data->attr_conf->format.c_str()); // format
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " archive rel change: \"" << data->attr_conf->events.arch_event.archive_rel_change.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement,10, cass_string_init(data->attr_conf->events.arch_event.archive_rel_change.c_str())); // archive relative range
+    cass_statement_bind_string(statement,10, data->attr_conf->events.arch_event.archive_rel_change.c_str()); // archive relative range
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " archive abs change: \"" << data->attr_conf->events.arch_event.archive_abs_change.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement,11, cass_string_init(data->attr_conf->events.arch_event.archive_abs_change.c_str())); // archive abs change
+    cass_statement_bind_string(statement,11, data->attr_conf->events.arch_event.archive_abs_change.c_str()); // archive abs change
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " archive period: \"" << data->attr_conf->events.arch_event.archive_period.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement,12, cass_string_init(data->attr_conf->events.arch_event.archive_period.c_str())); // archive period
+    cass_statement_bind_string(statement,12, data->attr_conf->events.arch_event.archive_period.c_str()); // archive period
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " description: \"" << data->attr_conf->description.c_str() << "\"" << endl;
 #endif
-    cass_statement_bind_string(statement,13, cass_string_init(data->attr_conf->description.c_str())); // description
+    cass_statement_bind_string(statement,13, data->attr_conf->description.c_str()); // description
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< " after binding description"<< endl;
 #endif
@@ -1391,15 +1395,15 @@ int HdbPPCassandra::configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING
 
 	CassStatement* statement = NULL;
 	CassFuture* future = NULL;
-	statement = cass_statement_new(cass_string_init(insert_str.str().c_str()), 4);
+	statement = cass_statement_new(insert_str.str().c_str(), 4);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
 	CassUuidGen* uuid_gen = cass_uuid_gen_new();
 	CassUuid uuid;
 	cass_uuid_gen_time(uuid_gen,&uuid);
 	cass_statement_bind_uuid(statement, 0, uuid);
-	cass_statement_bind_string(statement, 1, cass_string_init(facility.c_str()));
-	cass_statement_bind_string(statement, 2, cass_string_init(attr_name.c_str()));
-	cass_statement_bind_string(statement, 3, cass_string_init(data_type.c_str()));
+	cass_statement_bind_string(statement, 1, facility.c_str());
+	cass_statement_bind_string(statement, 2, attr_name.c_str());
+	cass_statement_bind_string(statement, 3, data_type.c_str());
 
 	future = cass_session_execute(mp_session, statement);
 	cass_future_wait(future);
@@ -1429,7 +1433,7 @@ int HdbPPCassandra::configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING
 	return 0;
 }
 
-int HdbPPCassandra::remove_Attr(string fqdn_attr_name)
+int HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 {
 	ostringstream remove_event_str;
 	CassUuid uuid;
@@ -1439,69 +1443,58 @@ int HdbPPCassandra::remove_Attr(string fqdn_attr_name)
 		cout<< __func__ << ": ERROR "<< fqdn_attr_name <<" NOT FOUND" << endl;
 		return -1;
 	}
-
-	if(!insert_history_event(EVENT_REMOVE, uuid))
+	
+	string event_name = "";
+	
+	switch(event)
 	{
-		cout << __func__ << "Error adding REMOVE event to history table for attribute " << fqdn_attr_name
+		case DB_START:
+		{
+			string last_event;
+			ret = find_last_event(uuid, last_event, fqdn_attr_name);
+			if(ret == 0 && last_event == EVENT_START)
+			{
+	    		// It seems there was a crash
+        		if(!insert_history_event(EVENT_CRASH, uuid))
+        		{
+					cout << __func__ << "Error adding CRASH event to history table for attribute " << fqdn_attr_name
+					     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+				}
+			}
+			event_name = EVENT_START;
+			break;
+		}
+		case DB_STOP:
+		{
+			event_name = EVENT_STOP;
+			break;
+		}
+		case DB_REMOVE:
+		{
+			event_name = EVENT_REMOVE;
+			break;
+		}
+		case DB_PAUSE:
+		{
+			event_name = EVENT_PAUSE;
+			break;
+		}
+		default:
+		{
+			cout<< __func__ << ": ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << endl;
+			return -1;
+		}
+	}
+	
+	if(!insert_history_event(event_name, uuid))
+	{
+		cout << __func__ << "Error adding "<< event_name << " event to history table for attribute " << fqdn_attr_name
 		     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
 		return -2;
 	}
 	return 0;
 }
 
-int HdbPPCassandra::start_Attr(string fqdn_attr_name)
-{
-	ostringstream insert_event_str;
-
-	CassUuid uuid;
-	int ret = find_attr_id(fqdn_attr_name, uuid);
-	if(ret < 0)
-	{
-		cout<< __func__ << ": ERROR "<< fqdn_attr_name<<" NOT FOUND" << endl;
-		return -1;
-	}
-
-	string event;
-	ret = find_last_event(uuid, event, fqdn_attr_name);
-	if(ret == 0 && event == EVENT_START)
-	{
-	    // It seems there was a crash
-        if(!insert_history_event(EVENT_CRASH, uuid))
-        {
-            cout << __func__ << "Error adding CRASH event to history table for attribute " << fqdn_attr_name
-                << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
-        }
-	}
-
-	if(!insert_history_event(EVENT_START, uuid))
-	{
-		cout << __func__ << "Error adding START event to history table for attribute " << fqdn_attr_name
-		     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
-		return -2;
-	}
-
-	return 0;
-}
-
-int HdbPPCassandra::stop_Attr(string fqdn_attr_name)
-{
-	ostringstream insert_event_str;
-	CassUuid uuid;
-	int ret = find_attr_id(fqdn_attr_name, uuid);
-	if(ret < 0)
-	{
-		cout<< __func__ << ": ERROR "<< fqdn_attr_name <<" NOT FOUND" << endl;
-		return -1;
-	}
-
-	if(!insert_history_event(EVENT_STOP, uuid))
-	{
-		cout << __func__ << "Error adding STOP event to history table for attribute " << fqdn_attr_name
-		     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
-		return -2;
-	}
-	return 0;
-}
 
 string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DEV_STRING, ..*/,
                                             int data_format /* SCALAR, SPECTRUM */,
