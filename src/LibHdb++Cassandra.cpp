@@ -39,8 +39,8 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 {
 	m_keyspace_name = keyspace_name;
 	mp_cluster = cass_cluster_new();
-#ifdef _CASS_LIB_DEBUG
   	cout << __func__<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
+#ifdef _CASS_LIB_DEBUG
   	//cass_log_set_level(CASS_LOG_DEBUG);
 #endif
 	cass_cluster_set_contact_points(mp_cluster,contact_points.c_str());
@@ -52,7 +52,7 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 	rc = connect_session();
 	if(rc != CASS_OK)
 	{
-		cout << __func__<< ": Cassandra connect session error"<< endl;
+		cerr << __func__<< ": Cassandra connect session error"<< endl;
   	}
 	else
 	{
@@ -128,7 +128,9 @@ bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 		// if not already present in cache, look for ID in the DB*/
 		if(find_attr_id_in_db(fqdn_attr_name, ID) != 0)
 		{
+#ifdef _CASS_LIB_DEBUG
 			cout << "(" << __FILE__ << "," << __LINE__ << ") "<< __func__<< ": ID not found for attr="<< fqdn_attr_name << endl;
+#endif
 			return false;
 		}
 	}
@@ -166,7 +168,7 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 	bool found = false;
 	if(rc != CASS_OK)
 	{
-		cout << __func__ << ": ERROR in query=" << query_str.str() << endl;
+		cerr << __func__ << ": ERROR in query=" << query_str.str() << endl;
     	print_error(future);
 	}
 	else
@@ -202,7 +204,9 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 	cass_statement_free(statement);
 	if(!found)
 	{
+#ifdef _CASS_LIB_DEBUG
 		cout << __func__<< "(" << fqdn_attr_name << "): NO RESULT in query: " << query_str.str() << endl;
+#endif
 		return -1;
 	}
 	return 0;
@@ -242,7 +246,7 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 	string db_type = "";
 	if(rc != CASS_OK)
 	{
-		cout<< __func__ << ": ERROR in query=" << query_str.str() << endl;
+		cerr << __func__ << ": ERROR in query=" << query_str.str() << endl;
     	print_error(future);
 	}
 	else
@@ -271,17 +275,23 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 	cass_statement_free(statement);
 	if(!found)
 	{
+#ifdef _CASS_LIB_DEBUG
 		cout << __func__<< ": NO RESULT in query: " << query_str.str() << endl;
+#endif
 		return -1;
 	}
 	if(db_type != attr_type)
 	{
+#ifdef _CASS_LIB_DEBUG
 		cout << __func__<< ": FOUND ID for " << facility << "/" << attr << " but different type: attr_type="<<attr_type<<"-db_type="<<db_type << endl;
+#endif
 		return -2;
 	}
 	else
 	{
+#ifdef _CASS_LIB_DEBUG
 		cout << __func__<< ": FOUND ID for " << facility << "/" << attr << " with SAME type: attr_type="<<attr_type<<"-db_type="<<db_type << endl;
+#endif
 		return 0;
 	}
 }
@@ -683,7 +693,7 @@ void HdbPPCassandra::extract_and_bind_state(CassStatement* statement,
 	}
 	else
 	{
-		cout << __func__ << "extract_read failed for attribute "<< data->attr_name << "! (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+		cerr << __func__ << "extract_read failed for attribute "<< data->attr_name << "! (" << __FILE__ << ":" << __LINE__ << ")" << endl;
 		cass_statement_bind_null(statement,param_index);
 	}
 }
@@ -695,7 +705,7 @@ void HdbPPCassandra::extract_and_bind_encoded(CassStatement* statement,
                                               enum extract_t extract_type)
 {
 	// TODO: Not yet supported
-	cout << __func__<< ": DevEncoded type is not yet supported..." << endl;
+	cerr << __func__<< ": DevEncoded type is not yet supported..." << endl;
 // 	vector<Tango::DevEncoded> val;
 // 	bool extract_success = false;
 //
@@ -879,7 +889,7 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 				{
 					TangoSys_MemStream os;
 					os << "Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported";
-					cout << __func__ << ": " << os.str() << endl;
+					cerr << __func__ << ": " << os.str() << endl;
 					return;
 				}
 			} // switch(data_type)
@@ -929,7 +939,7 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 				{
 					TangoSys_MemStream os;
 					os << "Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported";
-					cout << __func__ << ": " << os.str() << endl;
+					cerr << __func__ << ": " << os.str() << endl;
 					return;
 				}
 			} // switch(data_type)
@@ -965,7 +975,7 @@ int HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, con
 
 	if(rc != CASS_OK)
 	{
-		cout << __func__ << ": ERROR in query=" << query_str.str() << endl;
+		cerr << __func__ << ": ERROR in query=" << query_str.str() << endl;
     	print_error(future);
 	}
 	else
@@ -995,7 +1005,9 @@ int HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, con
 	cass_statement_free(statement);
 	if(!found)
 	{
+#ifdef _CASS_LIB_DEBUG
 		cout << __func__<< "(" << fqdn_attr_name << "): NO RESULT in query: " << query_str.str() << endl;
+#endif
 		return -1;
 	}
 	return 0;
@@ -1009,7 +1021,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 
     if(data == 0)
     {
-        cout << "HdbPPCassandra::insert_Attr(): data is a null pointer!" << endl;
+        cerr << "HdbPPCassandra::insert_Attr(): data is a null pointer!" << endl;
         return -1;
     }
 
@@ -1085,7 +1097,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 		facility = add_domain(facility);
 		if(!find_attr_id(fqdn_attr_name, ID))
 		{
-			cout << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
+			cerr << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
 			return -1;
 		}
 
@@ -1143,16 +1155,16 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 	}
 	catch(Tango::DevFailed &e)
 	{
-		cout << "Exception on " << data->attr_name << ":" << endl;
+		cerr << "Exception on " << data->attr_name << ":" << endl;
 
 		for (unsigned int i=0; i<e.errors.length(); i++)
 		{
-			cout << e.errors[i].reason << endl;
-			cout << e.errors[i].desc << endl;
-			cout << e.errors[i].origin << endl;
+			cerr << e.errors[i].reason << endl;
+			cerr << e.errors[i].desc << endl;
+			cerr << e.errors[i].origin << endl;
 		}
 
-		cout << endl;
+		cerr << endl;
 		if(future != NULL)
 			cass_future_free(future);
 		if(statement != NULL)
@@ -1207,7 +1219,7 @@ bool HdbPPCassandra::insert_history_event(const string & history_event_name, Cas
 
 	if(rc != CASS_OK)
 	{
-		cout<< __func__ << ": ERROR executing query=" << insert_event_str.str() << endl;
+		cerr << __func__ << ": ERROR executing query=" << insert_event_str.str() << endl;
 		return false;
 	}
 
@@ -1222,12 +1234,12 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 #endif
     if(data == 0)
     {
-        cout << "HdbPPCassandra::insert_param_Attr(): data is a null pointer!" << endl;
+        cerr << "HdbPPCassandra::insert_param_Attr(): data is a null pointer!" << endl;
 		return -1;
     }
     if(data->attr_conf == 0)
     {
-        cout << __func__ << ": data->attr_conf is a null pointer!" << endl;
+        cerr << __func__ << ": data->attr_conf is a null pointer!" << endl;
     }
     string fqdn_attr_name = data->attr_name;
     int64_t ev_time = 0;
@@ -1239,14 +1251,14 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 	}
 	catch(Tango::DevFailed &e)
 	{
-		cout << "Exception on " << data->attr_name << ":" << endl;
+		cerr << "Exception on " << data->attr_name << ":" << endl;
 		for (unsigned int i=0; i<e.errors.length(); i++)
 		{
-			cout << e.errors[i].reason << endl;
-			cout << e.errors[i].desc << endl;
-			cout << e.errors[i].origin << endl;
+			cerr << e.errors[i].reason << endl;
+			cerr << e.errors[i].desc << endl;
+			cerr << e.errors[i].origin << endl;
 		}
-		cout << endl;
+		cerr << endl;
 		return -1;
 	}
 	CassUuid uuid;
@@ -1255,14 +1267,16 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 	facility = add_domain(facility);
     if(!find_attr_id(fqdn_attr_name, uuid))
 	{
-		cout << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
+		cerr << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
 		return -1;
 	}
 	else
     {
         char uuidStr[CASS_UUID_STRING_LENGTH];
 		cass_uuid_string(uuid,uuidStr);
+#ifdef _CASS_LIB_DEBUG
         cout << __func__ << "ID found for attribute " << fqdn_attr_name << " = " << uuidStr << endl;
+#endif
     }
 
 	ostringstream query_str;
@@ -1353,7 +1367,7 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 
     if(rc != CASS_OK)
     {
-        cout<< __func__ << ": ERROR executing query=" << query_str.str().c_str() << endl;
+        cerr << __func__ << ": ERROR executing query=" << query_str.str().c_str() << endl;
         return -1;
     }
     return 0;
@@ -1362,74 +1376,118 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 
 int HdbPPCassandra::configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/)
 {
-	ostringstream insert_str;
-	ostringstream insert_event_str;
 	string facility = get_only_tango_host(name);
 	facility = add_domain(facility);
 	string attr_name = get_only_attr_name(name);
+	string domain = "";
+	string family = "";
+	string member = "";
+	string attribute_name = "";
+	int parsingError = getDomainFamMembName(attr_name,domain,family,member,attribute_name);
+	if(parsingError)
+	{
+		cerr << "Error parsing attribute name \"" << attr_name << "\"" << endl;
+		return -5;
+	}
 #ifdef _CASS_LIB_DEBUG
 	cout<< __func__ << ": name="<<name<<" -> facility="<<facility<<" attr_name="<<attr_name<< endl;
 #endif
-	CassUuid id;
 	string data_type = get_data_type(type, format, write_type);
+	CassUuid id;
 	int ret = find_attr_id_type(facility, attr_name, id, data_type);
 	//ID already present but different configuration (attribute type)
 	if(ret == -2)
 	{
-		cout<< __func__ << ": ERROR "<<facility<<"/"<<attr_name<<" already configured" << endl;
+		cout << __func__ << ": "<< facility << "/" << attr_name << " already configured with different configuration" << endl;
+		cout << "Please contact your administrator for this special case" << endl;
+		// Need to contact an administrator in this case!?
+	}
+	else
+	{
+		//ID found and same configuration (attribute type): do nothing
+		if(ret == 0)
+		{
+			cout << __func__ << ": ALREADY CONFIGURED with same configuration: "<<facility<<"/"<<attr_name << endl;
+			// If the last event was EVENT_REMOVE, add it again
+			string last_event;
+			ret = find_last_event(id, last_event, name);
+			if(ret == 0 && last_event == EVENT_REMOVE)
+			{
+				// An attribute which was removed needs to be added again
+				if(!insert_history_event(EVENT_ADD, id))
+				{
+					cerr << __func__ << "Error adding ADD event to history table for attribute " << name
+				    	 << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+					return -1;
+				}
+			}
+		}
+		else
+		{
+			// insert into configuration table
+			CassUuid uuid;
+			int error_insert_att_conf = insert_attr_conf(facility,attr_name,data_type,uuid);
+			if ( error_insert_att_conf )
+			{
+				cerr << __func__ << "(" << name 
+				     << "): Error inserting into " << CONF_TABLE_NAME << " table (error = " 
+					 << error_insert_att_conf << ")" << endl;
+				return error_insert_att_conf;
+			}
+			// Add ADD event into history table
+			if(!insert_history_event(EVENT_ADD, uuid))
+			{
+				cerr << __func__ << "Error adding ADD event to history table for attribute " << name
+			    	 << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+				return -1;
+			}
+		}
+	}
+	
+	// Insert into domains table
+	int error_insert_domain = insert_domain(facility,domain);
+	if(error_insert_domain)
+	{
+		cerr << __func__ << "(" << name 
+		     << "): Error inserting into " << DOMAINS_TABLE_NAME << " table (error = " 
+			 << error_insert_domain << ")"
+			 << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+	}
+	
+	// Insert into families table
+	int error_insert_family = insert_family(facility,domain,family);
+	if(error_insert_family)
+	{
+		cerr << __func__ << "(" << name 
+		     << "): Error inserting into " << FAMILIES_TABLE_NAME << " table (error = " 
+			 << error_insert_family << ")"
+			 << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+	}
+	
+	// Insert into members table
+	int error_insert_member = insert_member(facility,domain,family,member);
+	if(error_insert_member)
+	{
+		cerr << __func__ << "(" << name 
+		     << "): Error inserting into " << MEMBERS_TABLE_NAME << " table (error = " 
+			 << error_insert_member << ")"
+			 << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+	}
+	
+	// Insert into att_names table
+	int error_insert_attr_name = insert_attr_name(facility,domain,family,member,attribute_name);
+	if(error_insert_attr_name)
+	{
+		cerr << __func__ << "(" << name 
+		     << "): Error inserting into " << ATT_NAMES_TABLE_NAME << " table (error = " 
+			 << error_insert_attr_name << ")"
+			 << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+	}
+	
+	if(error_insert_domain || error_insert_family || error_insert_member || error_insert_attr_name)
+	{
 		return -1;
 	}
-
-	//ID found and same configuration (attribute type): do nothing
-	if(ret == 0)
-	{
-		cout<< __func__ << ": ALREADY CONFIGURED with same configuration: "<<facility<<"/"<<attr_name << endl;
-		return 0;
-	}
-
-	//add domain name to fqdn
-	name = string("tango://")+facility+string("/")+attr_name;
-	insert_str << "INSERT INTO " << m_keyspace_name << "." << CONF_TABLE_NAME
-	           << " ("  << CONF_COL_ID << "," << CONF_COL_FACILITY << "," << CONF_COL_NAME << "," << CONF_COL_TYPE << ")"
-			   << " VALUES (?, ?, ?, ?)" << ends;
-
-	CassStatement* statement = NULL;
-	CassFuture* future = NULL;
-	statement = cass_statement_new(insert_str.str().c_str(), 4);
-	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
-	CassUuidGen* uuid_gen = cass_uuid_gen_new();
-	CassUuid uuid;
-	cass_uuid_gen_time(uuid_gen,&uuid);
-	cass_statement_bind_uuid(statement, 0, uuid);
-	cass_statement_bind_string(statement, 1, facility.c_str());
-	cass_statement_bind_string(statement, 2, attr_name.c_str());
-	cass_statement_bind_string(statement, 3, data_type.c_str());
-
-	future = cass_session_execute(mp_session, statement);
-	cass_future_wait(future);
-
-	CassError rc = CASS_OK;
-	rc = cass_future_error_code(future);
-	if(rc != CASS_OK)
-		print_error(future);
-
-	cass_future_free(future);
-  	cass_statement_free(statement);
-	cass_uuid_gen_free(uuid_gen);
-
-	if(rc != CASS_OK)
-	{
-		cout<< __func__ << ": ERROR executing query=" << insert_str.str() << endl;
-		return -1;
-	}
-
-	if(!insert_history_event(EVENT_ADD, uuid))
-	{
-		cout << __func__ << "Error adding ADD event to history table for attribute " << name
-		     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
-		return -2;
-	}
-
 	return 0;
 }
 
@@ -1440,7 +1498,7 @@ int HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 	int ret = find_attr_id(fqdn_attr_name, uuid);
 	if(ret < 0)
 	{
-		cout<< __func__ << ": ERROR "<< fqdn_attr_name <<" NOT FOUND" << endl;
+		cerr << __func__ << ": ERROR "<< fqdn_attr_name <<" NOT FOUND" << endl;
 		return -1;
 	}
 	
@@ -1457,7 +1515,7 @@ int HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 	    		// It seems there was a crash
         		if(!insert_history_event(EVENT_CRASH, uuid))
         		{
-					cout << __func__ << "Error adding CRASH event to history table for attribute " << fqdn_attr_name
+					cerr << __func__ << "Error adding CRASH event to history table for attribute " << fqdn_attr_name
 					     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
 				}
 			}
@@ -1481,14 +1539,14 @@ int HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 		}
 		default:
 		{
-			cout<< __func__ << ": ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << endl;
+			cerr << __func__ << ": ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << endl;
 			return -1;
 		}
 	}
 	
 	if(!insert_history_event(event_name, uuid))
 	{
-		cout << __func__ << "Error adding "<< event_name << " event to history table for attribute " << fqdn_attr_name
+		cerr << __func__ << "Error adding "<< event_name << " event to history table for attribute " << fqdn_attr_name
 		     << " (" << __FILE__ << ":" << __LINE__ << ")" << endl;
 		return -2;
 	}
@@ -1592,6 +1650,77 @@ string HdbPPCassandra::get_only_tango_host(string str)
 }
 
 //=============================================================================
+/**
+ * This method parses attr_name and extracts the domain, 
+ * family, member and attribute name from the provided string
+ * @param attr_name attribute name under the form <domain>/<family>/<member>/<name>
+ * @param domain the domain extracted from the provided attr_name parameter (<domain>)
+ * @param family the family extracted from the provided attr_name parameter (<family>)
+ * @param member the member extracted from the provided attr_name parameter (<member>)
+ * @param name the attribute name extracted from the provided attr_name parameter (<name>)
+ */
+int HdbPPCassandra::getDomainFamMembName(const string & attr_name,
+                                          string & domain,
+                                          string & family,
+                                          string & member,
+                                          string & name)
+{
+	string::size_type	first_slash = attr_name.find("/");
+	if (first_slash == string::npos)
+	{
+		cerr << "getDomainFamMembName(" << attr_name << "): Error: there is no slash in attribute name" << endl;
+		return ERR_NO_SLASH_IN_ATTR;
+	}
+	string::size_type	second_slash = attr_name.find("/", first_slash+1);
+	if (second_slash == string::npos)
+	{
+		cerr << "getDomainFamMembName(" << attr_name << "): Error: there is only one slash in attribute name" << endl;
+		return ERR_ONLY_ONE_SLASH_IN_ATTR;
+	}
+	string::size_type	third_slash = attr_name.find("/", second_slash+1);
+	if (third_slash == string::npos)
+	{
+		cerr << "getDomainFamMembName(" << attr_name << "): Error: there are only two slashes in attribute name" << endl;
+		return ERR_ONLY_TWO_SLASHES_IN_ATTR;
+	}
+	string::size_type last_slash = attr_name.rfind("/");
+	if(last_slash != third_slash)
+	{
+		// Too many slashes provided!
+		cerr << "getDomainFamMembName(" << attr_name << "): Too many slashes provided in attribute name" << endl;
+		return ERR_TOO_MANY_SLASHES_IN_ATTR;
+	}
+	if(first_slash == 0)
+	{
+		// empty domain
+		cerr << "getDomainFamMembName(" << attr_name << "): empty domain" << endl;
+		return ERR_EMPTY_DOMAIN_IN_ATTR;
+	}
+	if(second_slash-first_slash-1 == 0)
+	{
+		// empty family
+		cerr << "getDomainFamMembName(" << attr_name << "): empty family" << endl;
+		return ERR_EMPTY_FAMILY_IN_ATTR;
+	}
+	if(third_slash-second_slash-1 == 0)
+	{
+		// empty member
+		cerr << "getDomainFamMembName(" << attr_name << "): empty member" << endl;
+		return ERR_EMPTY_MEMBER_IN_ATTR;
+	}
+	if(third_slash+1 == attr_name.length())
+	{
+		// empty atribute name
+		cerr << "getDomainFamMembName(" << attr_name << "): empty attribute name" << endl;
+		return ERR_EMPTY_ATTR_NAME_IN_ATTR;
+	}
+	domain = attr_name.substr(0,first_slash);
+	family = attr_name.substr(first_slash+1,second_slash-first_slash-1);
+	member = attr_name.substr(second_slash+1,third_slash-second_slash-1);
+	name = attr_name.substr(third_slash+1);
+	return 0;
+}
+//=============================================================================
 //=============================================================================
 string HdbPPCassandra::remove_domain(string str)
 {
@@ -1659,7 +1788,9 @@ string HdbPPCassandra::add_domain(string str)
 		for (rp = result; rp != NULL; rp = rp->ai_next)
 		{
 			with_domain = string(rp->ai_canonname) + str.substr(end2);
+#ifdef _CASS_LIB_DEBUG
 			cout << __func__ <<": found domain -> " << with_domain<<endl;
+#endif
 		}
 		freeaddrinfo(result); // all done with this structure
 		return with_domain;
@@ -1713,7 +1844,7 @@ string HdbPPCassandra::get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int
 		case Tango::DEV_ENCODED:
 			data_type << TYPE_DEV_ENCODED << "_"; break;
 		default:
-			cout << __func__ << "(" << type << ", ...): Type not supported (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+			cerr << __func__ << "(" << type << ", ...): Type not supported (" << __FILE__ << ":" << __LINE__ << ")" << endl;
 	}
 
 	if(write_type==Tango::READ)
@@ -1734,6 +1865,236 @@ string HdbPPCassandra::get_table_name(int type/*DEV_DOUBLE, DEV_STRING, ..*/, in
 	ostringstream table_name;
 	table_name << "att_" << get_data_type(type,format,write_type);
 	return table_name.str();
+}
+
+/*
+ * insert_attr_conf(): Insert the provided attribute into the configuration table (add it)
+ * 
+ * @param facility: control system name (TANGO_HOST)
+ * @param attr_name: attribute name with its device name like domain/family/member/name
+ * @param data_type: attribute data type (e.g. scalar_devdouble_rw)
+ * @returns 0 in case of success
+ *          -1 in case of error during the query execution
+ */
+int HdbPPCassandra::insert_attr_conf(const string & facility, 
+                                     const string & attr_name,
+                                     const string & data_type,
+									 CassUuid & uuid)
+{
+	ostringstream insert_str;
+	insert_str << "INSERT INTO " << m_keyspace_name << "." << CONF_TABLE_NAME
+	           << " ("  << CONF_COL_ID << "," << CONF_COL_FACILITY << "," << CONF_COL_NAME << "," << CONF_COL_TYPE << ")"
+			   << " VALUES (?, ?, ?, ?)" << ends;
+
+	CassStatement* att_conf_statement = NULL;
+	CassFuture* att_conf_future = NULL;
+	att_conf_statement = cass_statement_new(insert_str.str().c_str(), 4); // TODO Reuse prepared statement!
+	cass_statement_set_consistency(att_conf_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	CassUuidGen* uuid_gen = cass_uuid_gen_new();
+	cass_uuid_gen_time(uuid_gen,&uuid);
+	cass_statement_bind_uuid(att_conf_statement, 0, uuid);
+	cass_statement_bind_string(att_conf_statement, 1, facility.c_str());
+	cass_statement_bind_string(att_conf_statement, 2, attr_name.c_str());
+	cass_statement_bind_string(att_conf_statement, 3, data_type.c_str());
+	
+	att_conf_future = cass_session_execute(mp_session, att_conf_statement);
+	cass_future_wait(att_conf_future);
+
+	CassError rc = CASS_OK;
+	rc = cass_future_error_code(att_conf_future);
+	if(rc != CASS_OK)
+		print_error(att_conf_future);
+
+	cass_future_free(att_conf_future);
+  	cass_statement_free(att_conf_statement);
+	cass_uuid_gen_free(uuid_gen);
+
+	if(rc != CASS_OK)
+	{
+		cerr << __func__ << ": ERROR executing query=" << insert_str.str() << endl;
+		return -1;
+	}
+	return 0;
+}
+
+/**
+ * insert_domain(): Insert a new domain into the domains table,
+ * which is a table used to speed up browsing of attributes
+ * 
+ * @param facility: control system name (TANGO_HOST)
+ * @param domain: domain name
+ * @return 0 in case of success
+ *         -1 in case of error during the query execution
+ **/
+int HdbPPCassandra::insert_domain(const string & facility, const string & domain)
+{
+	ostringstream insert_domains_str;
+	insert_domains_str << "INSERT INTO " << m_keyspace_name << "." << DOMAINS_TABLE_NAME
+	                   << " ("  << DOMAINS_COL_FACILITY << "," << DOMAINS_COL_DOMAIN << ")"
+			           << " VALUES (?,?)" << ends;
+	CassStatement* domains_statement = NULL;
+	CassFuture* domains_future = NULL;
+	domains_statement = cass_statement_new(insert_domains_str.str().c_str(), 2); // TODO Reuse prepared statement?
+	cass_statement_set_consistency(domains_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	cass_statement_bind_string(domains_statement, 0, facility.c_str());
+	cass_statement_bind_string(domains_statement, 1, domain.c_str());
+	
+	domains_future = cass_session_execute(mp_session, domains_statement);
+	cass_future_wait(domains_future);
+
+	CassError rc = CASS_OK;
+	rc = cass_future_error_code(domains_future);
+	if(rc != CASS_OK)
+		print_error(domains_future);
+
+	cass_future_free(domains_future);
+  	cass_statement_free(domains_statement);
+
+	if(rc != CASS_OK)
+	{
+		cerr << __func__ << ": ERROR executing query=" << insert_domains_str.str() << endl;
+		return -1;
+	}
+	return 0;
+}
+
+/**
+ * insert_family(): Insert a new family into the families table, 
+ * which is a table used to speed up browsing of attributes
+ * 
+ * @param facility: control system name (TANGO_HOST)
+ * @param domain: domain name
+ * @param family: family name
+ * @return 0 in case of success
+ *         -1 in case of error during the query execution
+ **/
+int HdbPPCassandra::insert_family(const string & facility, const string & domain, const string & family)
+{
+	ostringstream insert_families_str;
+	insert_families_str << "INSERT INTO " << m_keyspace_name << "." << FAMILIES_TABLE_NAME
+	                   << " ("  << FAMILIES_COL_FACILITY << "," << FAMILIES_COL_DOMAIN << "," << FAMILIES_COL_FAMILY << ")"
+			           << " VALUES (?,?,?)" << ends;
+	CassStatement* families_statement = NULL;
+	CassFuture* families_future = NULL;
+	families_statement = cass_statement_new(insert_families_str.str().c_str(), 3); // TODO Reuse prepared statement?
+	cass_statement_set_consistency(families_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	cass_statement_bind_string(families_statement, 0, facility.c_str());
+	cass_statement_bind_string(families_statement, 1, domain.c_str());
+	cass_statement_bind_string(families_statement, 2, family.c_str());
+	
+	families_future = cass_session_execute(mp_session, families_statement);
+	cass_future_wait(families_future);
+
+	CassError rc = CASS_OK;
+	rc = cass_future_error_code(families_future);
+	if(rc != CASS_OK)
+		print_error(families_future);
+
+	cass_future_free(families_future);
+  	cass_statement_free(families_statement);
+
+	if(rc != CASS_OK)
+	{
+		cerr << __func__ << ": ERROR executing query=" << insert_families_str.str() << endl;
+		return -1;
+	}
+	return 0;
+}
+
+/**
+ * insert_member(): Insert a new member into the members table, 
+ * which is a table used to speed up browsing of attributes
+ * 
+ * @param facility: control system name (TANGO_HOST)
+ * @param domain: domain name
+ * @param family: family name
+ * @param member: member name
+ * @return 0 in case of success
+ *         -1 in case of error during the query execution
+ **/
+int HdbPPCassandra::insert_member(const string & facility, const string & domain, const string & family, const string & member)
+{
+	ostringstream insert_members_str;
+	insert_members_str << "INSERT INTO " << m_keyspace_name << "." << MEMBERS_TABLE_NAME
+	                   << " ("  << MEMBERS_COL_FACILITY << "," << MEMBERS_COL_DOMAIN << "," 
+					   << MEMBERS_COL_FAMILY << "," << MEMBERS_COL_MEMBER << ")"
+			           << " VALUES (?,?,?,?)" << ends;
+	CassStatement* members_statement = NULL;
+	CassFuture* members_future = NULL;
+	members_statement = cass_statement_new(insert_members_str.str().c_str(), 4); // TODO Reuse prepared statement?
+	cass_statement_set_consistency(members_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	cass_statement_bind_string(members_statement, 0, facility.c_str());
+	cass_statement_bind_string(members_statement, 1, domain.c_str());
+	cass_statement_bind_string(members_statement, 2, family.c_str());
+	cass_statement_bind_string(members_statement, 3, member.c_str());
+	
+	members_future = cass_session_execute(mp_session, members_statement);
+	cass_future_wait(members_future);
+
+	CassError rc = CASS_OK;
+	rc = cass_future_error_code(members_future);
+	if(rc != CASS_OK)
+		print_error(members_future);
+
+	cass_future_free(members_future);
+  	cass_statement_free(members_statement);
+
+	if(rc != CASS_OK)
+	{
+		cerr << __func__ << ": ERROR executing query=" << insert_members_str.str() << endl;
+		return -1;
+	}
+	return 0;
+}
+
+/**
+ * insert_attr_name(): Insert a new attribute name into the attribute names table, 
+ * which is a table used to speed up browsing of attributes
+ * 
+ * @param facility: control system name (TANGO_HOST)
+ * @param domain: domain name
+ * @param family: family name
+ * @param member: member name
+ * @param name: attribute name
+ * @return 0 in case of success
+ *         -1 in case of error during the query execution
+ **/
+int HdbPPCassandra::insert_attr_name(const string & facility, const string & domain, const string & family, 
+                      const string & member, const string & attribute_name)
+{
+	ostringstream insert_att_names_str;
+	insert_att_names_str << "INSERT INTO " << m_keyspace_name << "." << ATT_NAMES_TABLE_NAME
+	                   << " ("  << ATT_NAMES_COL_FACILITY << "," << ATT_NAMES_COL_DOMAIN << "," 
+					   << ATT_NAMES_COL_FAMILY << "," << ATT_NAMES_COL_MEMBER << ","
+					   << ATT_NAMES_COL_NAME << ")"
+			           << " VALUES (?,?,?,?,?)" << ends;
+	CassStatement* att_names_statement = NULL;
+	CassFuture* att_names_future = NULL;
+	att_names_statement = cass_statement_new(insert_att_names_str.str().c_str(), 5); // TODO Reuse prepared statement?
+	cass_statement_set_consistency(att_names_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	cass_statement_bind_string(att_names_statement, 0, facility.c_str());
+	cass_statement_bind_string(att_names_statement, 1, domain.c_str());
+	cass_statement_bind_string(att_names_statement, 2, family.c_str());
+	cass_statement_bind_string(att_names_statement, 3, member.c_str());
+	cass_statement_bind_string(att_names_statement, 4, attribute_name.c_str());
+
+	att_names_future = cass_session_execute(mp_session, att_names_statement);
+	cass_future_wait(att_names_future);
+
+	CassError rc = CASS_OK;
+	rc = cass_future_error_code(att_names_future);
+	if(rc != CASS_OK)
+		print_error(att_names_future);
+
+	cass_future_free(att_names_future);
+  	cass_statement_free(att_names_statement);
+
+	if(rc != CASS_OK)
+	{
+		cerr << __func__ << ": ERROR executing query=" << insert_att_names_str.str() << endl;
+		return -1;
+	}
+	return 0;		  
 }
 
 //=============================================================================
