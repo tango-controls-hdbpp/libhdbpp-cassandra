@@ -47,6 +47,20 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 	
 	/* Latency-aware routing enabled with the default settings */
 	cass_cluster_set_latency_aware_routing(mp_cluster, cass_true);
+	
+	/*
+	 * Use up to 2 remote datacenter nodes for remote consistency levels
+	 * or when `allow_remote_dcs_for_local_cl` is enabled.
+	 */
+	unsigned used_hosts_per_remote_dc = 2;
+
+	/* Don't use remote datacenter nodes for local consistency levels */
+	cass_bool_t allow_remote_dcs_for_local_cl = cass_false;
+
+	cass_cluster_set_load_balance_dc_aware(mp_cluster,
+										   "DC1", /* TODO : Make this a property */
+	                                       used_hosts_per_remote_dc,
+	                                       allow_remote_dcs_for_local_cl);
 
 	CassError rc = CASS_OK;
 	rc = connect_session();
@@ -103,7 +117,8 @@ CassError HdbPPCassandra::execute_query(const char* query)
 	CassError rc = CASS_OK;
 	CassFuture* future = NULL;
 	CassStatement* statement = cass_statement_new(query, 0);
-
+	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+	
 	future = cass_session_execute(mp_session, statement);
 	cass_future_wait(future);
 
@@ -158,6 +173,7 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 	CassFuture* future = NULL;
 
 	statement = cass_statement_new(query_str.str().c_str(), 2);
+	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
 	cass_statement_bind_string(statement, 0, attr_name.c_str());
 	cass_statement_bind_string(statement, 1, facility.c_str());
 
@@ -235,6 +251,7 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 	CassFuture* future = NULL;
 
 	statement = cass_statement_new(query_str.str().c_str(), 2);
+	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
 	cass_statement_bind_string(statement, 0, attr.c_str());
 	cass_statement_bind_string(statement, 1, facility.c_str());
 
@@ -1107,6 +1124,7 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 		CassError rc = CASS_OK;
 
 		statement = cass_statement_new(query_str.c_str(), nbQueryParams);
+		cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
 		cass_statement_bind_uuid(statement, 0, ID); // att_conf_id
 		// Compute the period based on the month of the event time
 		struct tm *tms;
@@ -1298,6 +1316,7 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
     CassFuture* future = NULL;
     CassError rc = CASS_OK;
     statement = cass_statement_new(query_str.str().c_str(), 14);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
     cass_statement_bind_uuid(statement, 0, uuid);
     // Get the current time
     struct timespec ts;
