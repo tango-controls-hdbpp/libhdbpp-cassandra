@@ -27,7 +27,6 @@
 
 //Tango:
 #include <tango.h>
-//#include <event.h>
 
 namespace HDBPP
 {
@@ -169,9 +168,8 @@ private:
 public:
 	~HdbPPCassandra();
 
-	HdbPPCassandra(string contact_points, string user, string password, string keyspace_name, int port);
+	HdbPPCassandra(vector<string> configuration);
 
-	//void connect_db(string host, string user, string password, string dbname);
 	CassError connect_session();
 	CassError execute_query(const char* query);
 	void print_error(CassFuture* future);
@@ -192,7 +190,11 @@ public:
 	int find_last_event(const CassUuid & ID, string &last_event, const string & fqdn_attr_name);
 	virtual int insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type);
 	virtual int insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type);
-	virtual int configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/);
+	virtual int configure_Attr(string name,
+	                           int type/*DEV_DOUBLE, DEV_STRING, ..*/,
+	                           int format/*SCALAR, SPECTRUM, ..*/,
+	                           int write_type/*READ, READ_WRITE, ..*/,
+	                           unsigned int ttl/*hours, 0=infinity*/);
 	virtual int event_Attr(string fqdn_attr_name, unsigned char event);
 
 private:
@@ -211,6 +213,8 @@ private:
 	int getDomainFamMembName(const string & attr_name, string & domain, string & family, string & member, string & name);
 	string remove_domain(string facility);
 	string add_domain(string facility);
+	void string_vector2map(vector<string> str, string separator, map<string,string>* results);
+	
 	string get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const;
 	string get_table_name(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const;
 	string get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DEV_STRING, ..*/,
@@ -355,7 +359,7 @@ class HdbPPCassandraFactory : public DBFactory
 {
 
 public:
-	virtual AbstractDB* create_db(string host, string user, string password, string dbname, int port);
+	virtual AbstractDB* create_db(vector<string> configuration);
 	virtual ~HdbPPCassandraFactory(){}
 
 };
