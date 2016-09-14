@@ -26,7 +26,11 @@ int main(int argc, char ** argv)
         device_name = argv[2];
         typestr = argv[3];
     }
-    HdbPPCassandra myDB = HdbPPCassandra("cassandra2,cassandra3","","","hdb",4658);
+	
+	vector<string> lib_config;
+	lib_config.push_back("contact_points=hdbr1,hdbr2");
+	lib_config.push_back("keyspace=hdb");
+    HdbPPCassandra myDB = HdbPPCassandra(lib_config);
     CassError ret = myDB.connect_session();
 	if(ret != CASS_OK)
 	{
