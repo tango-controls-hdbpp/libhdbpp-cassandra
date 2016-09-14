@@ -35,15 +35,104 @@ using namespace HDBPP;
 /**
  * @param contact_points string containing comma separated hostnames or IP address (Cassandra contact points)
  */
-HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string password, string keyspace_name, int port)
+HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 {
-	m_keyspace_name = keyspace_name;
-	mp_cluster = cass_cluster_new();
   	cout << __func__<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
+	mp_cluster = 0;
 #ifdef _CASS_LIB_DEBUG
   	//cass_log_set_level(CASS_LOG_DEBUG);
 #endif
+	map<string,string> libhdb_conf;
+	string_vector2map(configuration,"=",&libhdb_conf);
+	string contact_points, user, password;
+	string local_dc = "DC1"; // Local DataCenter default value
+/*	string libhdbpp_cassandra_log_level = "OFF";
+	// ---- log_level optional config parameter ----
+	try
+	{
+		libhdbpp_cassandra_log_level = libhdb_conf.at("log_level");
+	}
+	catch(const std::out_of_range& e)
+	{
+#ifdef _CASS_LIB_DEBUG
+		cout << __func__<<": \"log_level\" library configuration parameter is not defined. Default value will be used." << endl;
+#endif
+	}*/
+	// ---- Mandatory configuration parameters ----
+	try
+	{
+		contact_points = libhdb_conf.at("contact_points");
+	}
+	catch(const std::out_of_range& e)
+	{
+		stringstream error_desc;
+		error_desc << "Configuration parsing error: \"contact_points\" mandatory configuration parameter not found" << ends;
+		cout << __func__<< ": " << error_desc.str() << endl;
+		Tango::Except::throw_exception("LibHDB++ConfigError",error_desc.str(),__func__);
+	}
+	try
+	{
+		m_keyspace_name = libhdb_conf.at("keyspace");
+#ifdef _CASS_LIB_DEBUG
+		cout << __func__<<": contact_points=\"" << contact_points << "\"" << endl;
+		cout << __func__<<": keyspace=\"" << m_keyspace_name << "\"" << endl;
+#endif
+	}
+	catch(const std::out_of_range& e)
+	{
+		stringstream error_desc;
+		error_desc << "Configuration parsing error: \"keyspace\" mandatory configuration parameter not found" << ends;
+		cout << __func__<< ": " << error_desc.str() << endl;
+		Tango::Except::throw_exception("LibHDB++ConfigError",error_desc.str(),__func__);
+	}
+	// ---- optional config parameters ----
+	try
+	{
+		user = libhdb_conf.at("user");
+	}
+	catch(const std::out_of_range& e)
+	{
+#ifdef _CASS_LIB_DEBUG
+		cout << __func__<<": \"user\" library configuration parameter is not defined. " << endl;
+#endif
+	}
+	try
+	{
+		password = libhdb_conf.at("password");
+	}
+	catch(const std::out_of_range& e)
+	{
+#ifdef _CASS_LIB_DEBUG
+		cout << __func__<<": \"password\" library configuration parameter is not defined. " << endl;
+#endif
+	}
+	try
+	{
+		local_dc = libhdb_conf.at("local_dc");
+	}
+	catch(const std::out_of_range& e)
+	{
+#ifdef _CASS_LIB_DEBUG
+		cout << __func__<<": \"local_dc\" library configuration parameter is not defined. Default value DC1 will be used." << endl;
+#endif
+	}
+	
+	// ------------------------------------
+	mp_cluster = cass_cluster_new();
 	cass_cluster_set_contact_points(mp_cluster,contact_points.c_str());
+	if(user.empty() && password.empty())
+	{
+		// No authentication
+	}
+	else if (user.empty() && !password.empty())
+	{
+		cerr << __func__ << "A password was provided for the Cassandra connection, but no user name was provided!" << endl;
+		cerr << __func__ << "Will try to connect anonymously" << endl;
+	}
+	else
+	{
+		cass_cluster_set_credentials(mp_cluster, user.c_str(), password.c_str());
+	}
 	
 	/* Latency-aware routing enabled with the default settings */
 	cass_cluster_set_latency_aware_routing(mp_cluster, cass_true);
@@ -58,7 +147,7 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 	cass_bool_t allow_remote_dcs_for_local_cl = cass_false;
 
 	cass_cluster_set_load_balance_dc_aware(mp_cluster,
-										   "DC1", /* TODO : Make this a property */
+										   local_dc.c_str(),
 	                                       used_hosts_per_remote_dc,
 	                                       allow_remote_dcs_for_local_cl);
 
@@ -66,7 +155,14 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 	rc = connect_session();
 	if(rc != CASS_OK)
 	{
-		cerr << __func__<< ": Cassandra connect session error"<< endl;
+		cerr << __func__<< ": Cassandra connect session error: "<< cass_error_desc(rc) << endl;
+		stringstream error_desc;
+		error_desc << "Error connecting to the Cassandra Cluster: " << cass_error_desc(rc);
+		stringstream origin;
+		cass_cluster_free(mp_cluster);
+		mp_cluster = 0;
+		origin << __func__ << " (" << __FILE__ << ":" << __LINE__ << ")";
+		Tango::Except::throw_exception("CassandraConnectionError", error_desc.str() ,origin.str());
   	}
 	else
 	{
@@ -79,12 +175,15 @@ HdbPPCassandra::HdbPPCassandra(string contact_points, string user, string passwo
 
 HdbPPCassandra::~HdbPPCassandra()
 {
-	CassFuture* close_future = NULL;
-	close_future = cass_session_close(mp_session);
-	cass_future_wait(close_future);
-	cass_future_free(close_future);
-	cass_cluster_free(mp_cluster);
-	cass_session_free(mp_session);
+	if(mp_cluster)
+	{
+		CassFuture* close_future = NULL;
+		close_future = cass_session_close(mp_session);
+		cass_future_wait(close_future);
+		cass_future_free(close_future);
+		cass_cluster_free(mp_cluster);
+		cass_session_free(mp_session);
+	}
 }
 
 void HdbPPCassandra::print_error(CassFuture* future)
@@ -1393,7 +1492,11 @@ int HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDa
 }
 
 
-int HdbPPCassandra::configure_Attr(string name, int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/)
+int HdbPPCassandra::configure_Attr(string name, 
+                                   int type/*DEV_DOUBLE, DEV_STRING, ..*/,
+                                   int format/*SCALAR, SPECTRUM, ..*/,
+                                   int write_type/*READ, READ_WRITE, ..*/,
+                                   unsigned int ttl /* hours, 0=infinity*/)
 {
 	string facility = get_only_tango_host(name);
 	facility = add_domain(facility);
@@ -1820,6 +1923,17 @@ string HdbPPCassandra::add_domain(string str)
 	}
 }
 
+void HdbPPCassandra::string_vector2map(vector<string> str, string separator, map<string,string>* results)
+{
+	for(vector<string>::iterator it=str.begin(); it != str.end(); it++)
+	{
+		string::size_type found_eq;
+		found_eq = it->find_first_of(separator);
+		if(found_eq != string::npos && found_eq > 0)
+			results->insert(make_pair(it->substr(0,found_eq),it->substr(found_eq+1)));
+	}
+}
+
 //=============================================================================
 //=============================================================================
 string HdbPPCassandra::get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const
@@ -2118,16 +2232,16 @@ int HdbPPCassandra::insert_attr_name(const string & facility, const string & dom
 
 //=============================================================================
 //=============================================================================
-AbstractDB* HdbPPCassandraFactory::create_db(string host, string user, string password, string dbname, int port)
+AbstractDB* HdbPPCassandraFactory::create_db(vector<string> configuration)
 {
-	return new HdbPPCassandra(host, user, password, dbname, port);
+	return new HdbPPCassandra(configuration);
 }
 
 //=============================================================================
 //=============================================================================
 DBFactory *HdbClient::getDBFactory()
 {
-	HdbPPCassandraFactory *db_mysql_factory = new HdbPPCassandraFactory();
-	return static_cast<DBFactory*>(db_mysql_factory);//TODO
+	HdbPPCassandraFactory *db_cass_factory = new HdbPPCassandraFactory();
+	return static_cast<DBFactory*>(db_cass_factory);
 }
 
