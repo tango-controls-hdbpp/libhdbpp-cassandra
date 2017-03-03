@@ -236,11 +236,12 @@ CassError HdbPPCassandra::execute_query(const char* query)
 bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 {
 	// First look into the cache
-	map<string,CassUuid>::iterator it = attr_ID_map.find(fqdn_attr_name);
+	map<string,struct ConfParams>::iterator it = attr_ID_map.find(fqdn_attr_name);
 	if(it == attr_ID_map.end())
 	{
-		// if not already present in cache, look for ID in the DB*/
-		if(find_attr_id_in_db(fqdn_attr_name, ID) != 0)
+		// if not already present in cache, look for ID in the DB
+		unsigned int ttl = 0;
+		if(find_attr_id_and_ttl_in_db(fqdn_attr_name, ID, ttl) != 0)
 		{
 #ifdef _CASS_LIB_DEBUG
 			cout << "(" << __FILE__ << "," << __LINE__ << ") "<< __func__<< ": ID not found for attr="<< fqdn_attr_name << endl;
@@ -250,21 +251,42 @@ bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 	}
 	else
 	{
-		ID = it->second;
+		ID = it->second.id;
 	}
 	return true;
 }
 
-int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
+bool HdbPPCassandra::find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl)
+{
+	// First look into the cache
+	map<string,struct ConfParams>::iterator it = attr_ID_map.find(fqdn_attr_name);
+	if(it == attr_ID_map.end())
+	{
+		// if not already present in cache, look for ID in the DB
+		if(find_attr_id_and_ttl_in_db(fqdn_attr_name, ID, ttl) != 0)
+		{
+#ifdef _CASS_LIB_DEBUG
+			cout << "(" << __FILE__ << "," << __LINE__ << ") "<< __func__<< ": ID not found for attr="<< fqdn_attr_name << endl;
+#endif
+			return false;
+		}
+	}
+	else
+	{
+		ID = it->second.id;
+		ttl = it->second.ttl;
+	}
+	return true;
+}
+
+int HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl)
 {
 	ostringstream query_str;
-	//string facility_no_domain = remove_domain(facility);
-	//string facility_with_domain = add_domain(facility);
 	string facility = get_only_tango_host(fqdn_attr_name);
 	string attr_name = get_only_attr_name(fqdn_attr_name);
 	facility = add_domain(facility);
 
-	query_str << "SELECT " << CONF_COL_ID << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME <<
+	query_str << "SELECT " << CONF_COL_ID << ", " << CONF_COL_TTL << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME <<
 			" WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
 
 	CassError rc = CASS_OK;
@@ -294,16 +316,55 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 		if(cass_iterator_next(iterator))
 		{
 #ifdef _CASS_LIB_DEBUG
-			cout << __func__<< ": SUCCESS in query: " << query_str.str() << endl;
+			cout << __func__<< ": SUCCESS in query: " << query_str.str() 
+			     << "(" << CONF_COL_NAME << "=\'" << attr_name << "\',"
+				 << CONF_COL_FACILITY << "=\'" << facility << "\')" << endl;
 #endif
 			const CassRow* row = cass_iterator_get_row(iterator);
 			cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
+			cass_int32_t ttl_val = 0;
+#ifdef _CASS_LIB_DEBUG
+			const CassValue* cassTtlVal = cass_row_get_column_by_name(row, CONF_COL_TTL.c_str());
+			if(cassTtlVal == NULL)
+			{
+				cout << "Column ttl does not exist???" << endl;
+			}
+			else
+			{
+				cout << "OK . value_type() = " << cass_value_type(cassTtlVal) << endl;
+			}
+#endif
+			CassError get_ttl_cass_error = cass_value_get_int32(cass_row_get_column_by_name(row, CONF_COL_TTL.c_str()), &ttl_val);
+			if(get_ttl_cass_error != CASS_OK)
+			{
+
+#ifdef _CASS_LIB_DEBUG
+				if(get_ttl_cass_error == CASS_ERROR_LIB_NULL_VALUE)
+				{
+					cout << "TTL value is NULL" << endl;
+				}
+				cout << "An error occured: " <<  cass_error_desc(get_ttl_cass_error) << endl;
+				cout << "cass_value_get_int32 for ttl detected a NULL value" << endl;
+#endif
+				ttl = 0;
+			}
+			else
+			{
+#ifdef _CASS_LIB_DEBUG
+				cout << "cass_value_get_int32 returned " << ttl_val << endl;
+#endif
+				ttl = ttl_val;
+			}
+			struct ConfParams conf_param;
+			conf_param.id = ID;
+			conf_param.ttl = ttl;
 #ifdef _CASS_LIB_DEBUG
 			cout << __func__<< "(" << fqdn_attr_name << "): ID found " << endl;
+			cout << __func__<< "(" << fqdn_attr_name << "): TTL = " << ttl << endl;
 #endif
 			found = true;
-			attr_ID_map.insert(make_pair(fqdn_attr_name,ID));
-			map<string,CassUuid>::iterator it = attr_ID_map.find(fqdn_attr_name);
+			attr_ID_map.insert(make_pair(fqdn_attr_name,conf_param));
+			map<string,struct ConfParams>::iterator it = attr_ID_map.find(fqdn_attr_name);
 			if(it == attr_ID_map.end())
 			{
 				char uuidStr[CASS_UUID_STRING_LENGTH];
@@ -327,7 +388,7 @@ int HdbPPCassandra::find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID)
 	return 0;
 }
 
-int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & ID, string attr_type)
+int HdbPPCassandra::find_attr_id_type_and_ttl(string facility, string attr, CassUuid & ID, string attr_type, unsigned int &conf_ttl)
 {
 #ifdef _CASS_LIB_DEBUG
     cout << __func__ << ": entering... " << endl;
@@ -336,7 +397,7 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 	//string facility_no_domain = remove_domain(facility);
 	//string facility_with_domain = add_domain(facility);
 
-	query_str << "SELECT " << CONF_COL_ID << "," << CONF_COL_TYPE << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME <<
+	query_str << "SELECT " << CONF_COL_ID << "," << CONF_COL_TYPE << "," << CONF_COL_TTL << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME <<
 			" WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
 
 #ifdef _CASS_LIB_DEBUG
@@ -381,6 +442,11 @@ int HdbPPCassandra::find_attr_id_type(string facility, string attr, CassUuid & I
 			size_t db_type_res_length;
 			cass_value_get_string(cass_row_get_column(row, 1), &db_type_res, &db_type_res_length);
 			db_type = string(db_type_res,db_type_res_length);
+			cass_int32_t ttl_val = 0;
+			if(cass_value_get_int32(cass_row_get_column(row,2), &ttl_val) == CASS_ERROR_LIB_NULL_VALUE)
+				conf_ttl = 0;
+			else
+				conf_ttl = (unsigned int) ttl_val;
 			found = true;
     	}
 		cass_result_free(result);
@@ -1211,14 +1277,15 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 		string facility = get_only_tango_host(fqdn_attr_name);
 		string attr_name = get_only_attr_name(fqdn_attr_name);
 		facility = add_domain(facility);
-		if(!find_attr_id(fqdn_attr_name, ID))
+		unsigned int ttl = 0;
+		if(!find_attr_id_and_ttl(fqdn_attr_name, ID, ttl))
 		{
 			cerr << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
 			return -1;
 		}
 
 		int nbQueryParams = 0;
-		string query_str = get_insert_query_str(data_type,data_format,write_type, nbQueryParams, isNull);
+		string query_str = get_insert_query_str(data_type,data_format,write_type, nbQueryParams, isNull, ttl);
 
 		CassError rc = CASS_OK;
 
@@ -1252,7 +1319,12 @@ int HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data
 		int param_index = 10;
 
 		extract_and_bind_rw_values(statement,param_index,data_type,write_type,data_format,data,isNull);
-
+		
+		if(ttl != 0)
+		{
+			cass_statement_bind_uint32(statement,param_index,ttl*3600); // TTL
+		}
+		
 		future = cass_session_execute(mp_session, statement);
 		cass_future_wait(future);
 
@@ -1516,12 +1588,13 @@ int HdbPPCassandra::configure_Attr(string name,
 #endif
 	string data_type = get_data_type(type, format, write_type);
 	CassUuid id;
-	int ret = find_attr_id_type(facility, attr_name, id, data_type);
+	unsigned int conf_ttl = 0;
+	int ret = find_attr_id_type_and_ttl(facility, attr_name, id, data_type, conf_ttl);
 	//ID already present but different configuration (attribute type)
 	if(ret == -2)
 	{
-		cout << __func__ << ": "<< facility << "/" << attr_name << " already configured with different configuration" << endl;
-		cout << "Please contact your administrator for this special case" << endl;
+		cerr << __func__ << ": "<< facility << "/" << attr_name << " already configured with different configuration" << endl;
+		cerr << "Please contact your administrator for this special case" << endl;
 		// Need to contact an administrator in this case!?
 	}
 	else
@@ -1529,7 +1602,23 @@ int HdbPPCassandra::configure_Attr(string name,
 		//ID found and same configuration (attribute type): do nothing
 		if(ret == 0)
 		{
-			cout << __func__ << ": ALREADY CONFIGURED with same configuration: "<<facility<<"/"<<attr_name << endl;
+			cout << __func__ << ": ALREADY CONFIGURED with same configuration: "<< facility << "/" << attr_name << endl;
+			if(conf_ttl != ttl)
+			{
+#ifdef _LIB_DEBUG
+				cout<< __func__ << ": .... BUT different ttl: updating " << conf_ttl << " to " << ttl << endl;
+#endif
+				try
+				{
+					update_ttl(ttl,id);
+				}
+				catch(Tango::DevFailed &e)
+				{
+					stringstream error_desc;
+					error_desc << "Error while updating TTL to " << ttl << " for attribute " <<  facility << "/" << attr_name << ends;
+					Tango::Except::re_throw_exception(e,"HDB_UPDATE_TTL_ERROR",error_desc.str().c_str(),__func__);
+				}
+			}
 			// If the last event was EVENT_REMOVE, add it again
 			string last_event;
 			ret = find_last_event(id, last_event, name);
@@ -1548,7 +1637,7 @@ int HdbPPCassandra::configure_Attr(string name,
 		{
 			// insert into configuration table
 			CassUuid uuid;
-			int error_insert_att_conf = insert_attr_conf(facility,attr_name,data_type,uuid);
+			int error_insert_att_conf = insert_attr_conf(facility,attr_name,data_type,uuid,ttl);
 			if ( error_insert_att_conf )
 			{
 				cerr << __func__ << "(" << name 
@@ -1680,7 +1769,8 @@ string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DE
                                             int data_format /* SCALAR, SPECTRUM */,
                                             int write_type/*READ, READ_WRITE, ..*/,
                                             int & nbQueryParams,
-                                            bool isNull) const
+                                            bool isNull,
+											unsigned int ttl) const
 {
 	string table_name = get_table_name(tango_data_type, data_format, write_type);
 	ostringstream query_str;
@@ -1727,7 +1817,15 @@ string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DE
         }
     }
 
-    query_str << ")" << ends;
+    query_str << ")" ;
+	
+	if (ttl != 0)
+	{
+		query_str << " USING TTL ?";
+		nbQueryParams++;
+	}
+	
+	query_str << ends;
 
 #ifdef _CASS_LIB_DEBUG
 	cout << __func__<< "Query = \"" << query_str.str() << "\"" << endl;
@@ -2006,22 +2104,25 @@ string HdbPPCassandra::get_table_name(int type/*DEV_DOUBLE, DEV_STRING, ..*/, in
  * @param facility: control system name (TANGO_HOST)
  * @param attr_name: attribute name with its device name like domain/family/member/name
  * @param data_type: attribute data type (e.g. scalar_devdouble_rw)
+ * @param uuid: uuid generated during the insertion process for this attribute
+ * @param ttl: TTL value for this attribute (default = 0)
  * @returns 0 in case of success
  *          -1 in case of error during the query execution
  */
 int HdbPPCassandra::insert_attr_conf(const string & facility, 
                                      const string & attr_name,
                                      const string & data_type,
-									 CassUuid & uuid)
+									 CassUuid & uuid,
+ 									 unsigned int ttl)
 {
 	ostringstream insert_str;
 	insert_str << "INSERT INTO " << m_keyspace_name << "." << CONF_TABLE_NAME
-	           << " ("  << CONF_COL_ID << "," << CONF_COL_FACILITY << "," << CONF_COL_NAME << "," << CONF_COL_TYPE << ")"
-			   << " VALUES (?, ?, ?, ?)" << ends;
+	           << " ("  << CONF_COL_ID << "," << CONF_COL_FACILITY << "," << CONF_COL_NAME << "," << CONF_COL_TYPE << "," << CONF_COL_TTL << ")"
+			   << " VALUES (?, ?, ?, ?, ?)" << ends;
 
 	CassStatement* att_conf_statement = NULL;
 	CassFuture* att_conf_future = NULL;
-	att_conf_statement = cass_statement_new(insert_str.str().c_str(), 4); // TODO Reuse prepared statement!
+	att_conf_statement = cass_statement_new(insert_str.str().c_str(), 5); // TODO Reuse prepared statement!
 	cass_statement_set_consistency(att_conf_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
 	CassUuidGen* uuid_gen = cass_uuid_gen_new();
 	cass_uuid_gen_time(uuid_gen,&uuid);
@@ -2029,6 +2130,7 @@ int HdbPPCassandra::insert_attr_conf(const string & facility,
 	cass_statement_bind_string(att_conf_statement, 1, facility.c_str());
 	cass_statement_bind_string(att_conf_statement, 2, attr_name.c_str());
 	cass_statement_bind_string(att_conf_statement, 3, data_type.c_str());
+	cass_statement_bind_int32(att_conf_statement, 4, ttl);
 	
 	att_conf_future = cass_session_execute(mp_session, att_conf_statement);
 	cass_future_wait(att_conf_future);
@@ -2228,6 +2330,45 @@ int HdbPPCassandra::insert_attr_name(const string & facility, const string & dom
 		return -1;
 	}
 	return 0;		  
+}
+
+/**
+ * update_ttl(): Execute the query to update the TTL for the attribute having the 
+ * specified ID
+ *
+ * @param ttl: the new ttl value
+ * @param id: attribute conf ID
+ * @throws Tango::DevFailed exceptions in case of error during the query 
+ *         execution
+ */
+void HdbPPCassandra::update_ttl(unsigned int ttl, const CassUuid & id)
+{
+	ostringstream update_ttl_query_str;
+	update_ttl_query_str << "UPDATE " << m_keyspace_name << "." << CONF_TABLE_NAME
+	                   << " SET "  << CONF_COL_TTL << " = " << ttl << " WHERE att_conf_id = ?" << ends;
+	CassStatement* update_ttl_statement = NULL;
+	CassFuture* update_ttl_future = NULL;
+	update_ttl_statement = cass_statement_new(update_ttl_query_str.str().c_str(), 1); // TODO Reuse prepared statement?
+	cass_statement_set_consistency(update_ttl_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
+	cass_statement_bind_uuid(update_ttl_statement, 0, id);
+
+	update_ttl_future = cass_session_execute(mp_session, update_ttl_statement);
+	cass_future_wait(update_ttl_future);
+
+	CassError rc = CASS_OK;
+	rc = cass_future_error_code(update_ttl_future);
+	if(rc != CASS_OK)
+		print_error(update_ttl_future);
+
+	cass_future_free(update_ttl_future);
+  	cass_statement_free(update_ttl_statement);
+
+	if(rc != CASS_OK)
+	{
+		stringstream error_desc;
+		error_desc << "ERROR executing query \"" << update_ttl_query_str.str() << "\": " << cass_error_desc(rc) << ends;
+		Tango::Except::throw_exception("HDB_UPDATE_TTL_ERROR",error_desc.str().c_str(),__func__);
+	}
 }
 
 //=============================================================================
