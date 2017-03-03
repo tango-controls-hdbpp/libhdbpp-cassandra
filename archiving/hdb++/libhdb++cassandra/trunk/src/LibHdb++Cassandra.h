@@ -67,6 +67,7 @@ public:
 	const string CONF_COL_FACILITY = "cs_name";
 	const string CONF_COL_NAME =	 "att_name";
 	const string CONF_COL_TYPE =	 "data_type";
+	const string CONF_COL_TTL =      "ttl";
 	
 	//######## domains ########
 	const string DOMAINS_TABLE_NAME =	"domains";
@@ -163,7 +164,12 @@ private:
 	CassCluster* mp_cluster;
 	CassSession* mp_session;
 	string m_keyspace_name;
-	map<string,CassUuid> attr_ID_map;
+	struct ConfParams
+	{
+		CassUuid id;
+		unsigned int ttl;
+	};
+	map<string,struct ConfParams> attr_ID_map;
 
 public:
 	~HdbPPCassandra();
@@ -177,8 +183,9 @@ public:
 	 * This method will try to get the corresponding attribute ID from its name and facility name (Tango Host)
 	 **/
 	bool find_attr_id(string fqdn_attr_name, CassUuid & ID);
-	int find_attr_id_in_db(string fqdn_attr_name, CassUuid & ID);
-	int find_attr_id_type(string facility, string attr_name, CassUuid & ID, string attr_type);
+	bool find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
+	int find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
+	int find_attr_id_type_and_ttl(string facility, string attr_name, CassUuid & ID, string attr_type, unsigned int &conf_ttl);
 	/**
 	 * This method will retrieve the last event from the history table
 	 * for the given ID and will return it in the event string given as parameter
@@ -221,7 +228,8 @@ private:
 	                            int format/*SCALAR, SPECTRUM, ..*/,
 	                            int write_type/*READ, READ_WRITE, ..*/,
 								int & nbQueryParams,
-								bool isNull) const;
+								bool isNull,
+								unsigned int ttl) const;
 	void extract_and_bind_bool(CassStatement* statement,
                                int & param_index,
                                int data_format /*SCALAR, SPECTRUM, ..*/,
@@ -302,10 +310,15 @@ private:
 	 * @param attr_name: attribute name with its device name like domain/family/member/name
 	 * @param data_type: attribute data type (e.g. scalar_devdouble_rw)
 	 * @param uuid: uuid generated during the insertion process for this attribute
+	 * @param ttl: TTL value for this attribute (default = 0)
 	 * @return 0 in case of success
 	 *         -1 in case of error during the query execution
 	 **/
-	int insert_attr_conf(const string & facility, const string & attr_name, const string & data_type, CassUuid & uuid);
+	int insert_attr_conf(const string & facility,
+	                     const string & attr_name,
+	                     const string & data_type,
+	                     CassUuid & uuid,
+	                     unsigned int ttl = 0);
 	/**
 	 * insert_domain(): Insert a new domain into the domains table,
 	 * which is a table used to speed up browsing of attributes
@@ -353,6 +366,16 @@ private:
 	 **/
 	int insert_attr_name(const string & facility, const string & domain, const string & family, 
 	                      const string & member, const string & attribute_name);
+	/**
+	 * update_ttl(): Execute the query to update the TTL for the attribute having the 
+	 * specified ID
+	 *
+	 * @param ttl: the new ttl value
+	 * @param id: attribute conf ID
+	 * @throws Tango::DevFailed exceptions in case of error during the query
+	 *         execution
+	 */
+	void update_ttl(unsigned int ttl, const CassUuid & id);
 };
 
 class HdbPPCassandraFactory : public DBFactory
