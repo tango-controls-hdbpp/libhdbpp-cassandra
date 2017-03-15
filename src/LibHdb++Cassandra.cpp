@@ -1702,6 +1702,13 @@ int HdbPPCassandra::configure_Attr(string name,
 	return 0;
 }
 
+int HdbPPCassandra::updateTTL_Attr(string name,
+                                   unsigned int ttl /* hours, 0=infinity*/)
+{
+	//TODO: implement
+	return 0;
+}
+
 int HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 {
 	ostringstream remove_event_str;
