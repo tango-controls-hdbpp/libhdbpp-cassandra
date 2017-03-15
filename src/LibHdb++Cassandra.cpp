@@ -2380,7 +2380,7 @@ AbstractDB* HdbPPCassandraFactory::create_db(vector<string> configuration)
 
 //=============================================================================
 //=============================================================================
-DBFactory *HdbClient::getDBFactory()
+DBFactory *getDBFactory()
 {
 	HdbPPCassandraFactory *db_cass_factory = new HdbPPCassandraFactory();
 	return static_cast<DBFactory*>(db_cass_factory);

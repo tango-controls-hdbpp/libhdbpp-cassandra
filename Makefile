@@ -1,9 +1,15 @@
+LIBHDBPP_DIR = .libhdbpp
+LIBHDBPP_INC = ./$(LIBHDBPP_DIR)/src
+MAKE_INC = .hdbpp-common
 
-include ../../Make-hdb++.in
+DBIMPL_INC = ../../cassandra/cppDriver/cpp-driver/include
+DBIMPL_LIB = -L../../cassandra/cppDriver/cpp-driver/lib/libuv/lib \
+             -L../../cassandra/cppDriver/cpp-driver \
+             -lcassandra -luv
+             
+include ./$(MAKE_INC)/Make-hdbpp.in
 
-CXXFLAGS += -Wall -DRELEASE='"$HeadURL: $ "' \
-		-I$(DBIMPL_INC) -I$(TANGO_INC) -I$(OMNI_INC) -I$(LIBHDB_INC)
-CXX = g++
+CXXFLAGS += -std=gnu++0x -Wall -DRELEASE='"$HeadURL$ "' $(DBIMPL_INC) $(INC_DIR) -I$(LIBHDBPP_INC)
 
 
 ##############################################
@@ -16,8 +22,8 @@ SHLIB_SUFFIX = so
 
 #  release numbers for libraries
 #
- LIBVERSION    = 5
- LIBRELEASE    = 1
+ LIBVERSION    = 6
+ LIBRELEASE    = 0
  LIBSUBRELEASE = 0
 #
 
@@ -45,7 +51,7 @@ lib/LibHdb++cassandra: lib obj obj/LibHdb++Cassandra.o
 	ln -sf $(SHLIB) lib/$(DT_SONAME)
 	ar rcs lib/$(LIBRARY) obj/LibHdb++Cassandra.o
 
-obj/LibHdb++Cassandra.o: src/LibHdb++Cassandra.cpp src/LibHdb++Cassandra.h $(LIBHDB_INC)/LibHdb++.h
+obj/LibHdb++Cassandra.o: src/LibHdb++Cassandra.cpp src/LibHdb++Cassandra.h $(LIBHDBPP_INC)/LibHdb++.h
 	$(CXX) $(CXXFLAGS) -fPIC -c src/LibHdb++Cassandra.cpp -o $@
 
 obj/TestFindAttrIdType.o: test/TestFindAttrIdType.cpp src/LibHdb++Cassandra.h
