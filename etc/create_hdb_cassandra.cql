@@ -14,6 +14,7 @@ cs_name text,
 att_name text,
 att_conf_id timeuuid,
 data_type text,   -- data_types set<text> in the future?
+ttl int,  -- Time to Live in hours
 PRIMARY KEY (cs_name, att_name)
 )
 WITH comment='Attribute Configuration Table'
@@ -271,7 +272,7 @@ recv_time timestamp,
 recv_time_us int,
 insert_time timestamp,
 insert_time_us int,
-value_r bigint,              // issue here with very big numbers
+value_r bigint,              -- issue here with very big numbers
 quality int,
 error_desc text,
 PRIMARY KEY ((att_conf_id ,period),data_time,data_time_us)
@@ -287,8 +288,8 @@ recv_time timestamp,
 recv_time_us int,
 insert_time timestamp,
 insert_time_us int,
-value_r bigint, // issue here with very big numbers
-value_w bigint, // issue here with very big numbers
+value_r bigint, -- issue here with very big numbers
+value_w bigint, -- issue here with very big numbers
 quality int,
 error_desc text,
 PRIMARY KEY ((att_conf_id ,period),data_time,data_time_us)
@@ -700,7 +701,7 @@ recv_time timestamp,
 recv_time_us int,
 insert_time timestamp,
 insert_time_us int,
-value_r list<bigint>,  // issue with very big numbers
+value_r list<bigint>,  -- issue with very big numbers
 quality int,
 error_desc text,
 PRIMARY KEY ((att_conf_id ,period),data_time,data_time_us)
@@ -716,8 +717,8 @@ recv_time timestamp,
 recv_time_us int,
 insert_time timestamp,
 insert_time_us int,
-value_r list<bigint>, // issue with very big numbers
-value_w list<bigint>, // issue with very big numbers
+value_r list<bigint>, -- issue with very big numbers
+value_w list<bigint>, -- issue with very big numbers
 quality int,
 error_desc text,
 PRIMARY KEY ((att_conf_id ,period),data_time,data_time_us)
@@ -832,8 +833,8 @@ recv_time timestamp,
 recv_time_us int,
 insert_time timestamp,
 insert_time_us int,
-value_r list<int>, // Store a special type here
-                   // where we could store an int and a string?
+value_r list<int>, -- Store a special type here
+                   -- where we could store an int and a string?
 quality int,
 error_desc text,
 PRIMARY KEY ((att_conf_id ,period),data_time,data_time_us)
@@ -849,8 +850,8 @@ recv_time timestamp,
 recv_time_us int,
 insert_time timestamp,
 insert_time_us int,
-value_r list<int>,// Store a special type here
-value_w list<int>,// where we could store an int and a string?
+value_r list<int>,-- Store a special type here
+value_w list<int>,-- where we could store an int and a string?
 quality int,
 error_desc text,
 PRIMARY KEY ((att_conf_id ,period),data_time,data_time_us)
