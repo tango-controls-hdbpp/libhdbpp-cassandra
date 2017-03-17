@@ -1,26 +1,27 @@
 LIBHDBPP_DIR = .libhdbpp
 LIBHDBPP_INC = ./$(LIBHDBPP_DIR)/src
 
-DBIMPL_INC = ../../cassandra/cppDriver/cpp-driver/include
-DBIMPL_LIB = -L../../cassandra/cppDriver/cpp-driver/lib/libuv/lib \
-             -L../../cassandra/cppDriver/cpp-driver \
+CASS_CPP_DRIVER_DIR ?= ../../cassandra/cppDriver/cpp-driver
+LIBUV_ROOT_DIR ?= ../../cassandra/cppDriver/cpp-driver/lib/libuv
+DBIMPL_INC := ${CASS_CPP_DRIVER_DIR}/include
+DBIMPL_LIB = -L${LIBUV_ROOT_DIR}/lib \
+             -L${CASS_CPP_DRIVER_DIR}/lib \
              -lcassandra -luv
-             
+
 TANGO_INC := ${TANGO_DIR}/include/tango
 OMNIORB_INC := ${OMNIORB_DIR}/include
 ZMQ_INC :=  ${ZMQ_DIR}/include
 
 INC_DIR = -I${TANGO_INC} -I${OMNIORB_INC} -I${ZMQ_INC}
 
-CXXFLAGS += -std=gnu++0x -Wall -DRELEASE='"$HeadURL$ "' $(DBIMPL_INC) $(INC_DIR) -I$(LIBHDBPP_INC)
-
+CXXFLAGS += -std=gnu++0x -Wall -DRELEASE='"$HeadURL$ "' -I$(DBIMPL_INC) $(INC_DIR) -I$(LIBHDBPP_INC)
 
 ##############################################
 # support for shared libray versioning
 #
 LFLAGS_SONAME = $(DBIMPL_LIB) -Wl,-soname,
 SHLDFLAGS = -shared
-BASELIBNAME       =  libhdb++cassandra
+BASELIBNAME =  libhdb++cassandra
 SHLIB_SUFFIX = so
 
 #  release numbers for libraries
@@ -35,18 +36,10 @@ DT_SONAME     = $(BASELIBNAME).$(SHLIB_SUFFIX).$(LIBVERSION)
 DT_SHLIB      = $(BASELIBNAME).$(SHLIB_SUFFIX).$(LIBVERSION).$(LIBRELEASE).$(LIBSUBRELEASE)
 SHLIB         = $(BASELIBNAME).$(SHLIB_SUFFIX)
 
-# TODO remove these dependencies?
-TANGO_DIR ?= /segfs/tango/release/debian7
-RUNTIME_DIR ?= /opt/dserver
-
-OMNIORB_INC = ${OMNIORB_DIR}/include
-
-INC_DIR = -I${TANGO_INC} -I${OMNIORB_INC}
-
 TANGO_LIB = ${TANGO_DIR}/lib
 OMNIORB_LIB = ${OMNIORB_DIR}/lib
 
-.PHONY : install clean
+.PHONY : clean
 
 lib/LibHdb++cassandra: lib obj obj/LibHdb++Cassandra.o
 	$(CXX) obj/LibHdb++Cassandra.o $(SHLDFLAGS) $(LFLAGS_SONAME)$(DT_SONAME) -o lib/$(DT_SHLIB)
@@ -71,5 +64,3 @@ clean:
 
 lib obj:
 	@mkdir $@
-
-
