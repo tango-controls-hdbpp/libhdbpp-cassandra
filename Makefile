@@ -1,13 +1,16 @@
 LIBHDBPP_DIR = .libhdbpp
 LIBHDBPP_INC = ./$(LIBHDBPP_DIR)/src
-MAKE_INC = .hdbpp-common
 
 DBIMPL_INC = ../../cassandra/cppDriver/cpp-driver/include
 DBIMPL_LIB = -L../../cassandra/cppDriver/cpp-driver/lib/libuv/lib \
              -L../../cassandra/cppDriver/cpp-driver \
              -lcassandra -luv
              
-include ./$(MAKE_INC)/Make-hdbpp.in
+TANGO_INC := ${TANGO_DIR}/include/tango
+OMNIORB_INC := ${OMNIORB_DIR}/include
+ZMQ_INC :=  ${ZMQ_DIR}/include
+
+INC_DIR = -I${TANGO_INC} -I${OMNIORB_INC} -I${ZMQ_INC}
 
 CXXFLAGS += -std=gnu++0x -Wall -DRELEASE='"$HeadURL$ "' $(DBIMPL_INC) $(INC_DIR) -I$(LIBHDBPP_INC)
 
