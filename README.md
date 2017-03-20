@@ -7,7 +7,7 @@ To compile this library, you will need to download and install the [DataStax Cas
 ## How to build?
 
 ```bash
-git clone --recursive http://github.com/ELETTRA-SincrotroneTrieste/libhdbpp-cassandra.git
+git clone --recursive http://github.com/tango-controls/libhdbpp-cassandra.git
 
 cd libhdbpp-cassandra
 export TANGO_DIR=/usr/local/tango-9.2.5a
