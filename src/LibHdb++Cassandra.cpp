@@ -1610,7 +1610,7 @@ int HdbPPCassandra::configure_Attr(string name,
 #endif
 				try
 				{
-					update_ttl(ttl,id);
+					update_ttl(ttl,facility,attr_name);
 				}
 				catch(Tango::DevFailed &e)
 				{
@@ -1702,10 +1702,24 @@ int HdbPPCassandra::configure_Attr(string name,
 	return 0;
 }
 
-int HdbPPCassandra::updateTTL_Attr(string name,
+int HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name,
                                    unsigned int ttl /* hours, 0=infinity*/)
 {
-	//TODO: implement
+	CassUuid uuid;
+	bool found = find_attr_id(fqdn_attr_name, uuid);
+	if(!found)
+	{
+		stringstream error_desc;
+		error_desc << fqdn_attr_name <<" NOT FOUND in HDB++ configuration table" << ends;
+		cerr << error_desc << endl;
+		Tango::Except::throw_exception("AttributeNotFound",
+                                       error_desc.str().c_str(),
+		                               "HdbPPCassandra::updateTTL_Attr");
+	}
+	string facility = get_only_tango_host(fqdn_attr_name);
+	facility = add_domain(facility);
+	string attr_name = get_only_attr_name(fqdn_attr_name);
+	update_ttl(ttl,facility,attr_name);
 	return 0;
 }
 
@@ -2344,20 +2358,25 @@ int HdbPPCassandra::insert_attr_name(const string & facility, const string & dom
  * specified ID
  *
  * @param ttl: the new ttl value
- * @param id: attribute conf ID
+ * @param facility: control system name (TANGO_HOST)
+ * @param attr_name: attribute name including device name (domain/family/member/att_name)
  * @throws Tango::DevFailed exceptions in case of error during the query 
  *         execution
  */
-void HdbPPCassandra::update_ttl(unsigned int ttl, const CassUuid & id)
+void HdbPPCassandra::update_ttl(unsigned int ttl, const string & facility, const string & attr_name)
 {
 	ostringstream update_ttl_query_str;
 	update_ttl_query_str << "UPDATE " << m_keyspace_name << "." << CONF_TABLE_NAME
-	                   << " SET "  << CONF_COL_TTL << " = " << ttl << " WHERE att_conf_id = ?" << ends;
+	                     << " SET "  << CONF_COL_TTL << " = " << ttl
+	                     << " WHERE "<< CONF_COL_FACILITY << " = ? AND "
+	                     << CONF_COL_NAME << " = ?"
+	                     << ends;
 	CassStatement* update_ttl_statement = NULL;
 	CassFuture* update_ttl_future = NULL;
-	update_ttl_statement = cass_statement_new(update_ttl_query_str.str().c_str(), 1); // TODO Reuse prepared statement?
+	update_ttl_statement = cass_statement_new(update_ttl_query_str.str().c_str(), 2); // TODO Reuse prepared statement?
 	cass_statement_set_consistency(update_ttl_statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
-	cass_statement_bind_uuid(update_ttl_statement, 0, id);
+	cass_statement_bind_string(update_ttl_statement, 0, facility.c_str());
+	cass_statement_bind_string(update_ttl_statement, 1, attr_name.c_str());
 
 	update_ttl_future = cass_session_execute(mp_session, update_ttl_statement);
 	cass_future_wait(update_ttl_future);

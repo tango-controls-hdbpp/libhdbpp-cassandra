@@ -7,29 +7,29 @@ using namespace std;
 int main(int argc, char ** argv)
 {
 
-    string device_name = "elin/v-rga/4/mass44";
+    string attr_name = "elin/v-rga/4/mass44";
     string facility="orion.esrf.fr:10000";
     string typestr = "scalar_devdouble_ro";
 
     if(argc == 2)
     {
-        device_name = argv[1];
+        attr_name = argv[1];
     }
     if(argc == 3)
     {
         facility = argv[1];
-        device_name = argv[2];
+        attr_name = argv[2];
     }
     if(argc == 4)
     {
         facility = argv[1];
-        device_name = argv[2];
+        attr_name = argv[2];
         typestr = argv[3];
     }
 	
 	vector<string> lib_config;
-	lib_config.push_back("contact_points=hdbr1,hdbr2");
-	lib_config.push_back("keyspace=hdb");
+	lib_config.push_back("contact_points=cassandra2");
+	lib_config.push_back("keyspace=hdbtest");
     HdbPPCassandra myDB = HdbPPCassandra(lib_config);
     CassError ret = myDB.connect_session();
 	if(ret != CASS_OK)
@@ -38,11 +38,17 @@ int main(int argc, char ** argv)
 		return -1;
   	}
     CassUuid ID;
+    unsigned int ttl;
 
-    cout << "device name = " << device_name << endl;
-    int err = myDB.find_attr_id_type(facility, device_name, ID, typestr);
+    cout << "device name = " << attr_name << endl;
+    int err = myDB.find_attr_id_type_and_ttl(facility, attr_name, ID, typestr, ttl);
 
-    cout << "find_att_id_type(" << device_name << ") returned " << err << endl;
+    cout << "find_attr_id_type_and_ttl(" << facility << "," << attr_name << ") returned " << err << endl;
+	if(!err)
+	{
+		cout << "ttl = " << ttl << endl;
+	}
+
     cout << "Bye" << endl;
 
     return 0;

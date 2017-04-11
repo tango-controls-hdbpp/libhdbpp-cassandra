@@ -373,11 +373,12 @@ private:
 	 * specified ID
 	 *
 	 * @param ttl: the new ttl value
-	 * @param id: attribute conf ID
+	 * @param facility: control system name (TANGO_HOST)
+	 * @param attr_name: attribute name including device name (domain/family/member/att_name)
 	 * @throws Tango::DevFailed exceptions in case of error during the query
 	 *         execution
 	 */
-	void update_ttl(unsigned int ttl, const CassUuid & id);
+	void update_ttl(unsigned int ttl, const string & facility, const string & attr_name);
 };
 
 class HdbPPCassandraFactory : public DBFactory
