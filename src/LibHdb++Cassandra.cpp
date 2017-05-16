@@ -329,7 +329,7 @@ void HdbPPCassandra::print_error(CassFuture* future)
 	fprintf(stderr, "Cassandra Error: %.*s\n", (int)message_length, message);
 
 	// swap to?
-	cerr << "Cassandra Error: " + message << endl;
+	cerr << "Cassandra Error: " << message << endl;
 }
 
 CassError HdbPPCassandra::connect_session()
