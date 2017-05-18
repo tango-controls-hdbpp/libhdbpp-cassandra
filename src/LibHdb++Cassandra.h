@@ -29,6 +29,8 @@ namespace HDBPP
 class HdbPPCassandra : public AbstractDB
 {
 private:
+
+	enum FindAttrResult { AttrNotFound, FoundAttrWithDifferentType, FoundAttrWithSameType };
 	enum extract_t { EXTRACT_READ, EXTRACT_SET };
 
 	struct ConfParams
@@ -49,23 +51,21 @@ public:
 
 	HdbPPCassandra(vector<string> configuration);
 
-	virtual int insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type);
-	virtual int insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type);
+	virtual void insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type);
+	virtual void insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type);
 
-	virtual int configure_Attr(string name,
-	                           int type/*DEV_DOUBLE, DEV_STRING, ..*/,
-	                           int format/*SCALAR, SPECTRUM, ..*/,
-	                           int write_type/*READ, READ_WRITE, ..*/,
-	                           unsigned int ttl/*hours, 0=infinity*/);
+	virtual void configure_Attr(string name,
+	                           	int type/*DEV_DOUBLE, DEV_STRING, ..*/,
+	                            int format/*SCALAR, SPECTRUM, ..*/,
+	                            int write_type/*READ, READ_WRITE, ..*/,
+	                            unsigned int ttl/*hours, 0=infinity*/);
 
-	virtual int updateTTL_Attr(string name, unsigned int ttl/*hours, 0=infinity*/);
-	virtual int event_Attr(string fqdn_attr_name, unsigned char event);
+	virtual void updateTTL_Attr(string name, unsigned int ttl/*hours, 0=infinity*/);
+	virtual void event_Attr(string fqdn_attr_name, unsigned char event);
 
 private:
 
-    CassError connect_session();
-    CassError execute_query(const char* query);
-    void print_error(CassFuture* future);
+    void connect_session();
 
 	string get_only_attr_name(string str);
 	string get_only_tango_host(string str);
@@ -91,17 +91,17 @@ private:
 	 * @param ID the ID of the attribute we want to check
 	 * @param last_event the string where the event type will be stored if found
 	 * @param fqdn_attr_name FQDN attribute name (used only on debug trace messages)
-	 * @return 0 if the request succeeded or -1 in case of error
+	 * @return true if the request succeeded or false in case of error
 	 **/
-	int find_last_event(const CassUuid & ID, string &last_event, const string & fqdn_attr_name);
+	bool find_last_event(const CassUuid & ID, string &last_event, const string & fqdn_attr_name);
 
 	/**
 	 * This method will try to get the corresponding attribute ID from its name and facility name (Tango Host)
 	 **/
 	bool find_attr_id(string fqdn_attr_name, CassUuid & ID);
 	bool find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
-	int find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
-	int find_attr_id_type_and_ttl(string facility, string attr_name, CassUuid & ID, string attr_type, unsigned int &conf_ttl);
+	bool find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
+	FindAttrResult find_attr_id_type_and_ttl(string facility, string attr_name, CassUuid & ID, string attr_type, unsigned int &conf_ttl);
 
 	string get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const;
 	string get_table_name(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const;
@@ -199,7 +199,7 @@ private:
                                     Tango::EventData *data,
                                     bool isNull);
 
-	bool insert_history_event(const string & history_event_name, CassUuid att_conf_id);
+	void insert_history_event(const string & history_event_name, CassUuid att_conf_id);
 
 	/**
 	 * insert_attr_conf(): Insert the provided attribute into the configuration table (add it)
@@ -212,7 +212,7 @@ private:
 	 * @return 0 in case of success
 	 *         -1 in case of error during the query execution
 	 **/
-	int insert_attr_conf(const string & facility,
+	void insert_attr_conf(const string & facility,
 	                     const string & attr_name,
 	                     const string & data_type,
 	                     CassUuid & uuid,
@@ -226,7 +226,7 @@ private:
 	 * @return 0 in case of success
 	 *         -1 in case of error during the query execution
 	 **/
-	int insert_domain(const string & facility, const string & domain);
+	void insert_domain(const string & facility, const string & domain);
 	/**
 	 * insert_family(): Insert a new family into the families table,
 	 * which is a table used to speed up browsing of attributes
@@ -237,7 +237,7 @@ private:
 	 * @return 0 in case of success
 	 *         -1 in case of error during the query execution
 	 **/
-	int insert_family(const string & facility, const string & domain, const string & family);
+	void insert_family(const string & facility, const string & domain, const string & family);
 	/**
 	 * insert_member(): Insert a new member into the members table,
 	 * which is a table used to speed up browsing of attributes
@@ -249,7 +249,7 @@ private:
 	 * @return 0 in case of success
 	 *         -1 in case of error during the query execution
 	 **/
-	int insert_member(const string & facility, const string & domain, const string & family, const string & member);
+	void insert_member(const string & facility, const string & domain, const string & family, const string & member);
 	/**
 	 * insert_attr_name(): Insert a new attribute name into the attribute names table,
 	 * which is a table used to speed up browsing of attributes
@@ -262,7 +262,7 @@ private:
 	 * @return 0 in case of success
 	 *         -1 in case of error during the query execution
 	 **/
-	int insert_attr_name(const string & facility, const string & domain, const string & family,
+	void insert_attr_name(const string & facility, const string & domain, const string & family,
 	                      const string & member, const string & attribute_name);
 	/**
 	 * update_ttl(): Execute the query to update the TTL for the attribute having the
@@ -280,6 +280,10 @@ private:
  	 * Utility to set the cassandra logging level based on the configuration parameter
  	 **/
 	void set_cassandra_logging_level(string level);
+
+	CassError execute_statement(CassStatement * statement);
+	void throw_execute_exception(string message, string query, CassError error, const char * origin);
+	void log_error_message(string message, const char * origin);
 };
 
 class HdbPPCassandraFactory : public DBFactory
