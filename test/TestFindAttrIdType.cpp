@@ -31,12 +31,7 @@ int main(int argc, char ** argv)
 	lib_config.push_back("contact_points=cassandra2");
 	lib_config.push_back("keyspace=hdbtest");
     HdbPPCassandra myDB = HdbPPCassandra(lib_config);
-    CassError ret = myDB.connect_session();
-	if(ret != CASS_OK)
-	{
-		cout << "Cassandra connect session error"<< endl;
-		return -1;
-  	}
+
     CassUuid ID;
     unsigned int ttl;
 

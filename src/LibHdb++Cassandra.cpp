@@ -23,8 +23,41 @@
 #define LIB_BUILDTIME   RELEASE " " __DATE__ " "  __TIME__
 #endif
 
-const char version_string[] = "$Build: " LIB_BUILDTIME " $";
-static const char __FILE__rev[] = __FILE__ " $Id: $";
+//const char version_string[] = "$Build: " LIB_BUILDTIME " $";
+//static const char __FILE__rev[] = __FILE__ " $Id: $";
+
+// trace logging for just about every function can be compiled in for
+// debugging work. Normally this is switched off
+#define TRACE_ENABLED
+
+#ifdef TRACE_ENABLED
+	#define TRACE_MSG(str) \
+		do { \
+			std::cout << "(" << __FILE__ << ":" << __LINE__ << ":" << __func__ << ") " << str << std::endl; \
+		} while( false )
+#else
+	#define TRACE_MSG(str) do { } while ( false )
+#endif
+
+// debug can be compiled out no matter how the library is configured, this
+// is just a fail safe option, and this option should be enabled
+#define DEBUG_ENABLED
+
+#ifdef DEBUG_ENABLED
+	#define DEBUG_MSG(str) \
+		do { \
+			if (logging_enabled) \
+				std::cout << "(" << __FILE__ << ":" << __LINE__ << ":" << __func__ << ") " << str; \
+		} while( false )
+#else
+	#define DEBUG_MSG(str) do { } while ( false )
+#endif
+
+// finally an error message, this is never compiled out
+#define ERROR_MSG(str) \
+		do { \
+				std::cerr << "(" << __FILE__ << ":" << __LINE__ << ":" << __func__ << ") " << str; \
+		} while( false )
 
 namespace HDBPP
 {
@@ -159,7 +192,7 @@ const int ERR_EMPTY_ATTR_NAME_IN_ATTR =  -8;
  */
 HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 {
-  	cout << __func__<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
+	//cout << __func__<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
 
 	mp_cluster = 0;
 	map<string,string> libhdb_conf;
@@ -175,8 +208,8 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	}
 	catch(const std::out_of_range& e)
 	{
-        // setting logging to false by default
-        logging_enabled = false;
+		// setting logging to false by default
+		logging_enabled = false;
 	}
 
 	// ---- cassandra_driver_log_level optional config parameter ----
@@ -187,11 +220,9 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	}
 	catch(const std::out_of_range& e)
 	{
-		if( logging_enabled)
-			cout << __func__<<": \"log_level\" cassandra_driver_log_level configuration parameter is not defined. Default value will be used." << endl;
-
-        // default is disabled
-        cass_log_set_level(CASS_LOG_DISABLED);
+		// default is disabled
+		DEBUG_MSG("cassandra_driver_log_level configuration parameter is not defined. Default value will be used." << endl);
+		cass_log_set_level(CASS_LOG_DISABLED);
 	}
 
 	// ---- Mandatory configuration parameters ----
@@ -203,24 +234,21 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	{
 		stringstream error_desc;
 		error_desc << "Configuration parsing error: \"contact_points\" mandatory configuration parameter not found" << ends;
-		cout << __func__<< ": " << error_desc.str() << endl;
+		ERROR_MSG(error_desc.str() << endl);
 		Tango::Except::throw_exception("LibHDB++ConfigError",error_desc.str(),__func__);
 	}
 
 	try
 	{
 		m_keyspace_name = libhdb_conf.at("keyspace");
-
-		if( logging_enabled) {
-			cout << __func__ << ": contact_points=\"" << contact_points << "\"" << endl;
-			cout << __func__ << ": keyspace=\"" << m_keyspace_name << "\"" << endl;
-		}
+		DEBUG_MSG("contact_points=\"" << contact_points << "\"" << endl);
+		DEBUG_MSG("keyspace=\"" << m_keyspace_name << "\"" << endl);
 	}
 	catch(const std::out_of_range& e)
 	{
 		stringstream error_desc;
 		error_desc << "Configuration parsing error: \"keyspace\" mandatory configuration parameter not found" << ends;
-		cout << __func__<< ": " << error_desc.str() << endl;
+		ERROR_MSG(error_desc.str() << endl);
 		Tango::Except::throw_exception("LibHDB++ConfigError",error_desc.str(),__func__);
 	}
 
@@ -231,8 +259,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	}
 	catch(const std::out_of_range& e)
 	{
-		if( logging_enabled)
-			cout << __func__<<": \"user\" library configuration parameter is not defined. " << endl;
+		DEBUG_MSG("Library configuration parameter \"user\" is not defined. " << endl);
 	}
 
 	try
@@ -241,8 +268,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	}
 	catch(const std::out_of_range& e)
 	{
-		if( logging_enabled)
-			cout << __func__<<": \"password\" library configuration parameter is not defined. " << endl;
+		DEBUG_MSG("Library configuration parameter \"password\" is not defined. " << endl);
 	}
 
 	try
@@ -251,8 +277,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	}
 	catch(const std::out_of_range& e)
 	{
-		if( logging_enabled)
-			cout << __func__<<": \"local_dc\" library configuration parameter is not defined. Default value DC1 will be used." << endl;
+		DEBUG_MSG("Library configuration parameter \"local_dc\" is not defined. Default value DC1 will be used." << endl);
 	}
 
 	// ------------------------------------
@@ -264,8 +289,8 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 	}
 	else if (user.empty() && !password.empty())
 	{
-		cerr << __func__ << "A password was provided for the Cassandra connection, but no user name was provided!" << endl;
-		cerr << __func__ << "Will try to connect anonymously" << endl;
+		ERROR_MSG("A password was provided for the Cassandra connection, but no user name was provided!" << endl);
+		ERROR_MSG("Will try to connect anonymously" << endl);
 	}
 	else
 	{
@@ -286,8 +311,8 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 
 	cass_cluster_set_load_balance_dc_aware(mp_cluster,
 										   local_dc.c_str(),
-	                                       used_hosts_per_remote_dc,
-	                                       allow_remote_dcs_for_local_cl);
+										   used_hosts_per_remote_dc,
+										   allow_remote_dcs_for_local_cl);
 
 	// connect to the cassandra session
 	connect_session();
@@ -295,6 +320,8 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 
 HdbPPCassandra::~HdbPPCassandra()
 {
+	TRACE_MSG("Entering");
+
 	if(mp_cluster)
 	{
 		CassFuture* close_future = NULL;
@@ -304,37 +331,39 @@ HdbPPCassandra::~HdbPPCassandra()
 		cass_cluster_free(mp_cluster);
 		cass_session_free(mp_session);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::connect_session()
 {
+	TRACE_MSG("Entering");
+
 	mp_session = cass_session_new();
-	CassFuture* future = cass_session_connect(mp_session, mp_cluster);
+	CassFuture *future = cass_session_connect(mp_session, mp_cluster);
 	cass_future_wait(future);
 
 	CassError rc = cass_future_error_code(future);
 	cass_future_free(future);
 
-	if (rc != CASS_OK)
-	{
-		cerr << __func__ << ": Cassandra connect session error: " << cass_error_desc(rc) << endl;
+	if (rc != CASS_OK) {
+		ERROR_MSG("Cassandra connect session error: " << cass_error_desc(rc) << endl);
 		stringstream error_desc;
 		error_desc << "Error connecting to the Cassandra Cluster: " << cass_error_desc(rc);
-		stringstream origin;
 		cass_cluster_free(mp_cluster);
 		mp_cluster = 0;
-		origin << __func__ << " (" << __FILE__ << ":" << __LINE__ << ")";
-		Tango::Except::throw_exception("CassandraConnectionError", error_desc.str(), origin.str());
+		Tango::Except::throw_exception("CassandraConnectionError", error_desc.str(), __func__);
+	} else {
+		DEBUG_MSG("Cassandra connection OK" << endl);
 	}
-	else
-	{
-		if( logging_enabled)
-			cout << __func__<< ": Cassandra connection OK" << endl;
-	}
+
+	TRACE_MSG("Leaving");
 }
 
 bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 {
+	TRACE_MSG("Entering");
+
 	// First look into the cache
 	map<string,struct ConfParams>::iterator it = attr_ID_map.find(fqdn_attr_name);
 	if(it == attr_ID_map.end())
@@ -343,9 +372,8 @@ bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 		unsigned int ttl = 0;
 		if(!find_attr_id_and_ttl_in_db(fqdn_attr_name, ID, ttl))
 		{
-			if( logging_enabled)
-				cout << "(" << __FILE__ << "," << __LINE__ << ") "<< __func__<< ": ID not found for attr="<< fqdn_attr_name << endl;
-
+			DEBUG_MSG("ID not found for attr="<< fqdn_attr_name << endl);
+			TRACE_MSG("Leaving");
 			return false;
 		}
 	}
@@ -353,11 +381,15 @@ bool HdbPPCassandra::find_attr_id(string fqdn_attr_name, CassUuid & ID)
 	{
 		ID = it->second.id;
 	}
+
+	TRACE_MSG("Leaving");
 	return true;
 }
 
 bool HdbPPCassandra::find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl)
 {
+	TRACE_MSG("Entering");
+
 	// First look into the cache
 	map<string,struct ConfParams>::iterator it = attr_ID_map.find(fqdn_attr_name);
 	if(it == attr_ID_map.end())
@@ -365,9 +397,8 @@ bool HdbPPCassandra::find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, 
 		// if not already present in cache, look for ID in the DB
 		if(!find_attr_id_and_ttl_in_db(fqdn_attr_name, ID, ttl))
 		{
-			if( logging_enabled)
-				cout << "(" << __FILE__ << "," << __LINE__ << ") "<< __func__<< ": ID not found for attr="<< fqdn_attr_name << endl;
-
+			DEBUG_MSG("ID not found for attr="<< fqdn_attr_name << endl);
+			TRACE_MSG("Leaving");
 			return false;
 		}
 	}
@@ -376,18 +407,21 @@ bool HdbPPCassandra::find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, 
 		ID = it->second.id;
 		ttl = it->second.ttl;
 	}
+	TRACE_MSG("Leaving");
 	return true;
 }
 
 bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream query_str;
 	string facility = get_only_tango_host(fqdn_attr_name);
 	string attr_name = get_only_attr_name(fqdn_attr_name);
 	facility = add_domain(facility);
 
 	query_str << "SELECT " << CONF_COL_ID << ", " << CONF_COL_TTL << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME
-              << " WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
+			  << " WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
 
 	CassStatement* statement = cass_statement_new(query_str.str().c_str(), 2);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
@@ -411,53 +445,42 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid 
 
 	if(cass_iterator_next(iterator))
 	{
-		if( logging_enabled)
-			cout << __func__<< ": SUCCESS in query: " << query_str.str()
-				 << "(" << CONF_COL_NAME << "=\'" << attr_name << "\',"
-				 << CONF_COL_FACILITY << "=\'" << facility << "\')" << endl;
+		DEBUG_MSG("SUCCESS in query: " << query_str.str()
+			<< "(" << CONF_COL_NAME << "=\'" << attr_name << "\',"
+			<< CONF_COL_FACILITY << "=\'" << facility << "\')" << endl);
 
 		const CassRow* row = cass_iterator_get_row(iterator);
 		cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
 		cass_int32_t ttl_val = 0;
 
-		if( logging_enabled)
-		{
-			const CassValue *cassTtlVal = cass_row_get_column_by_name(row, CONF_COL_TTL.c_str());
+		const CassValue *cassTtlVal = cass_row_get_column_by_name(row, CONF_COL_TTL.c_str());
 
-			if (cassTtlVal == NULL)
-			{
-				cout << "Column ttl does not exist???" << endl;
-				// TODO (SJ) Is this an error condition?
-			}
-			else
-			{
-				cout << "OK . value_type() = " << cass_value_type(cassTtlVal) << endl;
-			}
+		if (cassTtlVal == NULL)
+		{
+			DEBUG_MSG("Column ttl does not exist???" << endl);
+			// TODO (SJ) Is this an error condition?
+		}
+		else
+		{
+			DEBUG_MSG("OK . value_type() = " << cass_value_type(cassTtlVal) << endl);
 		}
 
 		CassError get_ttl_cass_error = cass_value_get_int32(cass_row_get_column_by_name(row, CONF_COL_TTL.c_str()), &ttl_val);
 
 		if(get_ttl_cass_error != CASS_OK)
 		{
-			if( logging_enabled)
-			{
-				if (get_ttl_cass_error == CASS_ERROR_LIB_NULL_VALUE)
-				{
-					cout << "TTL value is NULL" << endl;
-				}
+			if (get_ttl_cass_error == CASS_ERROR_LIB_NULL_VALUE)
+				DEBUG_MSG("TTL value is NULL" << endl);
 
-				cout << "An error occured: " << cass_error_desc(get_ttl_cass_error) << endl;
-				cout << "cass_value_get_int32 for ttl detected a NULL value" << endl;
-				// TODO (SJ) Is this an error condition?
-			}
+			DEBUG_MSG("An error occured: " << cass_error_desc(get_ttl_cass_error) << endl);
+			DEBUG_MSG("cass_value_get_int32 for ttl detected a NULL value" << endl);
+			// TODO (SJ) Is this an error condition?
 
 			ttl = 0;
 		}
 		else
 		{
-			if( logging_enabled)
-				cout << "cass_value_get_int32 returned " << ttl_val << endl;
-
+			DEBUG_MSG("cass_value_get_int32 returned " << ttl_val << endl);
 			ttl = ttl_val;
 		}
 
@@ -465,11 +488,8 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid 
 		conf_param.id = ID;
 		conf_param.ttl = ttl;
 
-		if( logging_enabled)
-		{
-			cout << __func__ << "(" << fqdn_attr_name << "): ID found " << endl;
-			cout << __func__ << "(" << fqdn_attr_name << "): TTL = " << ttl << endl;
-		}
+		DEBUG_MSG("(" << fqdn_attr_name << "): ID found " << endl);
+		DEBUG_MSG("(" << fqdn_attr_name << "): TTL = " << ttl << endl);
 
 		found = true;
 		attr_ID_map.insert(make_pair(fqdn_attr_name,conf_param));
@@ -479,7 +499,7 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid 
 		{
 			char uuidStr[CASS_UUID_STRING_LENGTH];
 			cass_uuid_string(ID,uuidStr);
-			cout << "WARNING: (" << __FILE__ << "," << __LINE__ << ") "<< __func__<< ": ID (" << uuidStr << ") could not be added into cache for attr ="<< fqdn_attr_name << endl;
+			ERROR_MSG("ID (" << uuidStr << ") could not be added into cache for attr ="<< fqdn_attr_name << endl);
 		}
 	}
 
@@ -488,28 +508,23 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid 
 	cass_future_free(future);
 	cass_statement_free(statement);
 
-	if(!found && logging_enabled)
-		cout << __func__<< "(" << fqdn_attr_name << "): NO RESULT in query: " << query_str.str() << endl;
-
+	if(!found) DEBUG_MSG("(" << fqdn_attr_name << "): NO RESULT in query: " << query_str.str() << endl);
+	TRACE_MSG("Leaving");
 	return found;
 }
 
 HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(string facility, string attr, CassUuid & ID, string attr_type, unsigned int &conf_ttl)
 {
-	if( logging_enabled)
-    	cout << __func__ << ": entering... " << endl;
+	TRACE_MSG("Entering");
 
 	ostringstream query_str;
 
 	query_str << "SELECT " << CONF_COL_ID << "," << CONF_COL_TYPE << "," << CONF_COL_TTL << " FROM " << m_keyspace_name << "." << CONF_TABLE_NAME
 			  << " WHERE " << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
 
-	if( logging_enabled)
-	{
-		cout << __func__ << ": query = " << query_str.str().c_str() << endl;
-		cout << "facility = \"" << facility << "\"" << endl;
-		cout << "attr = \"" << attr << "\"" << endl;
-	}
+	DEBUG_MSG(": query = " << query_str.str().c_str() << endl);
+	DEBUG_MSG("facility = \"" << facility << "\"" << endl);
+	DEBUG_MSG("attr = \"" << attr << "\"" << endl);
 
 	CassStatement* statement = cass_statement_new(query_str.str().c_str(), 2);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
@@ -534,8 +549,7 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(string 
 
 	if(cass_iterator_next(iterator))
 	{
-		if( logging_enabled)
-			cout << __func__<< ": SUCCESS in query: " << query_str.str() << endl;
+		DEBUG_MSG("SUCCESS in query: " << query_str.str() << endl);
 
 		// TODO Improve error handling
 		const CassRow* row = cass_iterator_get_row(iterator);
@@ -561,31 +575,29 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(string 
 
 	if(!found)
 	{
-		if( logging_enabled)
-			cout << __func__<< ": NO RESULT in query: " << query_str.str() << endl;
-
+		DEBUG_MSG("NO RESULT in query: " << query_str.str() << endl);
+		TRACE_MSG("Leaving");
 		return AttrNotFound;
 	}
 	else if(db_type != attr_type)
 	{
-		if( logging_enabled)
-			cout << __func__<< ": FOUND ID for " << facility << "/" << attr << " but different type: attr_type="<<attr_type<<"-db_type="<<db_type << endl;
-
+		DEBUG_MSG("FOUND ID for " << facility << "/" << attr << " but different type: attr_type="<<attr_type<<"-db_type="<<db_type << endl);
+		TRACE_MSG("Leaving");
 		return FoundAttrWithDifferentType;
 	}
 
-	if( logging_enabled)
-		cout << __func__<< ": FOUND ID for " << facility << "/" << attr << " with SAME type: attr_type="<<attr_type<<"-db_type="<<db_type << endl;
-
+	DEBUG_MSG("FOUND ID for " << facility << "/" << attr << " with SAME type: attr_type="<<attr_type<<"-db_type="<<db_type << endl);
+	TRACE_MSG("Leaving");
 	return FoundAttrWithSameType;
 }
 
 void HdbPPCassandra::extract_and_bind_bool(CassStatement* statement,
-                                           int & param_index,
-                                           int data_format /*SCALAR, SPECTRUM, ..*/,
-                                           Tango::EventData *data,
-                                           enum extract_t extract_type)
+										   int & param_index,
+										   int data_format /*SCALAR, SPECTRUM, ..*/,
+										   Tango::EventData *data,
+										   enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<bool> vbool;
 	bool extract_success = false;
 
@@ -615,16 +627,20 @@ void HdbPPCassandra::extract_and_bind_bool(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_uchar(CassStatement* statement,
-                                            int & param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
+											int & param_index,
+											int data_format /*SCALAR, SPECTRUM, ..*/,
+											Tango::EventData *data,
+											enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<unsigned char> val;
 	bool extract_success = false;
 
@@ -654,16 +670,20 @@ void HdbPPCassandra::extract_and_bind_uchar(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_short(CassStatement* statement,
-                                            int & param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
+											int & param_index,
+											int data_format /*SCALAR, SPECTRUM, ..*/,
+											Tango::EventData *data,
+											enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<short> val;
 	bool extract_success = false;
 
@@ -693,16 +713,20 @@ void HdbPPCassandra::extract_and_bind_short(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_ushort(CassStatement* statement,
-                                             int & param_index,
-                                             int data_format /*SCALAR, SPECTRUM, ..*/,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
+											 int & param_index,
+											 int data_format /*SCALAR, SPECTRUM, ..*/,
+											 Tango::EventData *data,
+											 enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<unsigned short> val;
 	bool extract_success = false;
 
@@ -732,16 +756,20 @@ void HdbPPCassandra::extract_and_bind_ushort(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_long(CassStatement* statement,
-                                           int & param_index,
-                                           int data_format /*SCALAR, SPECTRUM, ..*/,
-                                           Tango::EventData *data,
-                                           enum extract_t extract_type)
+										   int & param_index,
+										   int data_format /*SCALAR, SPECTRUM, ..*/,
+										   Tango::EventData *data,
+										   enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<int> val;
 	bool extract_success = false;
 
@@ -771,16 +799,20 @@ void HdbPPCassandra::extract_and_bind_long(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_ulong(CassStatement* statement,
-                                            int & param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
+											int & param_index,
+											int data_format /*SCALAR, SPECTRUM, ..*/,
+											Tango::EventData *data,
+											enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<unsigned int> val;
 	bool extract_success = false;
 
@@ -810,16 +842,20 @@ void HdbPPCassandra::extract_and_bind_ulong(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_long64(CassStatement* statement,
-                                             int & param_index,
-                                             int data_format /*SCALAR, SPECTRUM, ..*/,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
+											 int & param_index,
+											 int data_format /*SCALAR, SPECTRUM, ..*/,
+											 Tango::EventData *data,
+											 enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<int64_t> val;
 	bool extract_success = false;
 
@@ -849,16 +885,20 @@ void HdbPPCassandra::extract_and_bind_long64(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_ulong64(CassStatement* statement,
-                                              int & param_index,
-                                              int data_format /*SCALAR, SPECTRUM, ..*/,
-                                              Tango::EventData *data,
-                                              enum extract_t extract_type)
+											  int & param_index,
+											  int data_format /*SCALAR, SPECTRUM, ..*/,
+											  Tango::EventData *data,
+											  enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<uint64_t> val;
 	bool extract_success = false;
 
@@ -888,16 +928,20 @@ void HdbPPCassandra::extract_and_bind_ulong64(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement, param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_string(CassStatement* statement,
-                                             int & param_index,
-                                             int data_format /*SCALAR, SPECTRUM, ..*/,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
+											 int & param_index,
+											 int data_format /*SCALAR, SPECTRUM, ..*/,
+											 Tango::EventData *data,
+											 enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<string> val;
 	bool extract_success = false;
 
@@ -927,16 +971,20 @@ void HdbPPCassandra::extract_and_bind_string(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_state(CassStatement* statement,
-                                            int & param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
+											int & param_index,
+											int data_format /*SCALAR, SPECTRUM, ..*/,
+											Tango::EventData *data,
+											enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<Tango::DevState> val;
 	bool extract_success = false;
 
@@ -978,19 +1026,23 @@ void HdbPPCassandra::extract_and_bind_state(CassStatement* statement,
 	else
 	{
 		// TODO (SJ) Should we be doing something with these?
-		cerr << __func__ << "extract_read failed for attribute "<< data->attr_name << "! (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_encoded(CassStatement* statement,
-                                              int & param_index,
-                                              int data_format /*SCALAR, SPECTRUM, ..*/,
-                                              Tango::EventData *data,
-                                              enum extract_t extract_type)
+											  int & param_index,
+											  int data_format /*SCALAR, SPECTRUM, ..*/,
+											  Tango::EventData *data,
+											  enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
+
 	// TODO: Not yet supported
-	cerr << __func__<< ": DevEncoded type is not yet supported..." << endl;
+	ERROR_MSG("DevEncoded type is not yet supported..." << endl);
 // 	vector<Tango::DevEncoded> val;
 // 	bool extract_success = false;
 //
@@ -1026,11 +1078,12 @@ void HdbPPCassandra::extract_and_bind_encoded(CassStatement* statement,
 }
 
 void HdbPPCassandra::extract_and_bind_float(CassStatement* statement,
-                                            int & param_index,
-                                            int data_format /* Tango::SCALAR, ... */,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
+											int & param_index,
+											int data_format /* Tango::SCALAR, ... */,
+											Tango::EventData *data,
+											enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<float> val;
 	bool extract_success = false;
 
@@ -1070,16 +1123,20 @@ void HdbPPCassandra::extract_and_bind_float(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_double(CassStatement* statement,
-                                             int & param_index,
-                                             int data_format /* Tango::SCALAR, ... */,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
+											 int & param_index,
+											 int data_format /* Tango::SCALAR, ... */,
+											 Tango::EventData *data,
+											 enum extract_t extract_type)
 {
+	TRACE_MSG("Entering");
 	vector<double> val;
 	bool extract_success = false;
 
@@ -1119,24 +1176,30 @@ void HdbPPCassandra::extract_and_bind_double(CassStatement* statement,
 	}
 	else
 	{
+		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
-                                                int & param_index,
+												int & param_index,
 												int data_type,
-                                                int write_type /*READ, READ_WRITE, ..*/,
-                                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                                Tango::EventData *data,
-                                                bool isNull)
+												int write_type /*READ, READ_WRITE, ..*/,
+												int data_format /*SCALAR, SPECTRUM, ..*/,
+												Tango::EventData *data,
+												bool isNull)
 {
+	TRACE_MSG("Entering");
+
 	if(write_type != Tango::WRITE)
 	{
 		if(isNull)
 		{
 			// There is no value to bind.
 			// This is to avoid storing NULL values into Cassandra (<=> tombstones)
+			TRACE_MSG("Leaving");
 			return;
 		}
 		else
@@ -1173,9 +1236,8 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 				default:
 				{
 					// TODO (SJ) Handle error state how?
-					TangoSys_MemStream os;
-					os << "Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported";
-					cerr << __func__ << ": " << os.str() << endl;
+					DEBUG_MSG("Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported" << endl);
+					TRACE_MSG("Leaving");
 					return;
 				}
 			} // switch(data_type)
@@ -1188,6 +1250,7 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 		{
 			// There is no value to bind.
 			// This is to avoid storing NULL values into Cassandra (<=> tombstones)
+			TRACE_MSG("Leaving");
 			return;
 		}
 		else
@@ -1223,26 +1286,28 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 					extract_and_bind_encoded(statement,param_index, data_format, data, EXTRACT_SET); break;
 				default:
 				{
-					TangoSys_MemStream os;
-					os << "Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported";
-					cerr << __func__ << ": " << os.str() << endl;
+					ERROR_MSG("Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported" << endl);
+					TRACE_MSG("Leaving");
 					return;
 				}
 			} // switch(data_type)
 		}
 		param_index++;
 	}
+
+	TRACE_MSG("Leaving");
 }
 
 bool HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, const string & fqdn_attr_name)
 {
+	TRACE_MSG("Entering");
 	ostringstream query_str;
 	last_event="??";
 
 	query_str   << "SELECT " << HISTORY_COL_EVENT
-                << " FROM " << m_keyspace_name << "." << HISTORY_TABLE_NAME
-                << " WHERE " << HISTORY_COL_ID << " = ?"
-                << " ORDER BY " << HISTORY_COL_TIME << " DESC LIMIT 1" << ends;
+				<< " FROM " << m_keyspace_name << "." << HISTORY_TABLE_NAME
+				<< " WHERE " << HISTORY_COL_ID << " = ?"
+				<< " ORDER BY " << HISTORY_COL_TIME << " DESC LIMIT 1" << ends;
 
 	CassStatement* statement = cass_statement_new(query_str.str().c_str(), 1);
 	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable?
@@ -1265,18 +1330,16 @@ bool HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, co
 
 	if(cass_iterator_next(iterator))
 	{
-		if (logging_enabled)
-			cout << __func__<< ": SUCCESS in query: " << query_str.str() << endl;
+		DEBUG_MSG("SUCCESS in query: " << query_str.str() << endl);
 
 		const CassRow* row = cass_iterator_get_row(iterator);
 		const char * last_event_res;
 		size_t last_event_res_length;
 		cass_value_get_string(cass_row_get_column(row, 0), &last_event_res, &last_event_res_length);
 		last_event = string(last_event_res,last_event_res_length);
-		found = true;
 
-		if (logging_enabled)
-			cout << __func__<< "(" << fqdn_attr_name << "): last event = " << last_event << endl;\
+		found = true;
+		DEBUG_MSG("(" << fqdn_attr_name << "): last event = " << last_event << endl);
 	}
 
 	cass_result_free(result);
@@ -1284,20 +1347,21 @@ bool HdbPPCassandra::find_last_event(const CassUuid & id, string &last_event, co
 	cass_future_free(future);
 	cass_statement_free(statement);
 
-	if(!found && logging_enabled)
-			cout << __func__<< "(" << fqdn_attr_name << "): NO RESULT in query: " << query_str.str() << endl;
-
+	if(!found) DEBUG_MSG("(" << fqdn_attr_name << "): NO RESULT in query: " << query_str.str() << endl);
+	TRACE_MSG("Leaving");
 	return found;
 }
 
 void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type)
 {
-    if(data == 0)
-    {
+	TRACE_MSG("Entering");
+
+	if(data == 0)
+	{
 		// TODO (SJ) assert this...
-        cerr << "HdbPPCassandra::insert_Attr(): data is a null pointer!" << endl;
-        return;
-    }
+		ERROR_MSG("HdbPPCassandra::insert_Attr(): data is a null pointer!" << endl);
+		return;
+	}
 
 	string fqdn_attr_name = data->attr_name;
 	int64_t	ev_time;
@@ -1318,8 +1382,7 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 	bool isNull = false;
 	if(data->err)
 	{
-		if (logging_enabled)
-			cout << __func__<< ": Attribute in error:" << error_desc << endl;
+		DEBUG_MSG("Attribute in error:" << error_desc << endl);
 
 		isNull = true;
 		// Store the error description
@@ -1328,21 +1391,16 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 	data->attr_value->reset_exceptions(Tango::DeviceAttribute::isempty_flag); // disable is_empty exception
 	if(data->attr_value->is_empty())
 	{
-		if (logging_enabled)
-			cout << __func__<< ": no value will be archived... (Attr Value is empty)" << endl;
-
+		DEBUG_MSG("no value will be archived... (Attr Value is empty)" << endl);
 		isNull = true;
 	}
 	if(quality == Tango::ATTR_INVALID)
 	{
-		if (logging_enabled)
-			cout << __func__<< ": no value will be archived... (Invalid Attribute)" << endl;
-
+		DEBUG_MSG("no value will be archived... (Invalid Attribute)" << endl);
 		isNull = true;
 	}
 
-	if (logging_enabled)
-		cout << __func__<< ": data_type="<<data_type<<" data_format="<<data_format<<" write_type="<<write_type << endl;
+	DEBUG_MSG("data_type="<<data_type<<" data_format="<<data_format<<" write_type="<<write_type << endl);
 
 	if(!isNull)
 	{
@@ -1369,8 +1427,7 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 
 	if(!find_attr_id_and_ttl(fqdn_attr_name, ID, ttl))
 	{
-		cerr << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
-
+		ERROR_MSG("Could not find ID for attribute " << fqdn_attr_name << endl);
 		stringstream error_desc;
 		error_desc << "ERROR Could not find ID for attribute  \"" << fqdn_attr_name << "\": " << ends;
 		Tango::Except::throw_exception("insert_Attr", error_desc.str().c_str(), __func__);
@@ -1403,6 +1460,7 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 	struct timespec ts;
 	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
 	{
+		// TODO handle this error?
 		perror("clock_gettime()");
 	}
 
@@ -1424,30 +1482,34 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", query_str, rc, __func__);
 
-	if (logging_enabled)
-		cout << __func__<< ": SUCCESS in query: " << query_str << endl;
+	DEBUG_MSG("SUCCESS in query: " << query_str << endl);
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::insert_history_event(const string & history_event_name, CassUuid att_conf_id)
 {
+	TRACE_MSG("Entering");
+
 	if (logging_enabled)
 	{
 		char att_conf_id_str[CASS_UUID_STRING_LENGTH];
 		cass_uuid_string(att_conf_id, &att_conf_id_str[0]);
-		cout << __func__ << "(" << history_event_name << "," << att_conf_id_str << ": entering... " << endl;
+		DEBUG_MSG("(" << history_event_name << "," << att_conf_id_str << ": entering... " << endl);
 	}
 
 	struct timespec ts;
 	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
 	{
+		// TODO handle this error?
 		perror("clock_gettime()");
 	}
 	int64_t current_time = ((int64_t) ts.tv_sec) * 1000;
 	int current_time_us = ts.tv_nsec / 1000;
 
 	ostringstream insert_event_str;
+
 	insert_event_str <<	"INSERT INTO " << m_keyspace_name << "." << HISTORY_TABLE_NAME
-	                 << " (" << HISTORY_COL_ID <<","<<HISTORY_COL_EVENT<<","<<HISTORY_COL_TIME<<","<<HISTORY_COL_TIME_US<<")"
+					 << " (" << HISTORY_COL_ID <<","<<HISTORY_COL_EVENT<<","<<HISTORY_COL_TIME<<","<<HISTORY_COL_TIME_US<<")"
 					 << " VALUES ( ?, ?, ?, ?)" << ends;
 
 	CassStatement* statement = cass_statement_new(insert_event_str.str().c_str(), 4);
@@ -1461,63 +1523,62 @@ void HdbPPCassandra::insert_history_event(const string & history_event_name, Cas
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", insert_event_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 
 void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type)
 {
-	if (logging_enabled)
-		cout << __func__<< ": entering..." << endl;
+	TRACE_MSG("Entering");
 
-    if(data == NULL)
-    {
-		// TODO (SJ) assert this
-        cerr << "HdbPPCassandra::insert_param_Attr(): data is a null pointer!" << endl;
+	if(data == NULL)
+	{
+		// TODO (SJ) assert this?
+		ERROR_MSG("HdbPPCassandra::insert_param_Attr(): data is a null pointer!" << endl);
 		return ;
-    }
+	}
 
-    if(data->attr_conf == NULL)
-    {
-		// TODO (SJ) change to return, assert it
-        cerr << __func__ << ": data->attr_conf is a null pointer!" << endl;
+	if(data->attr_conf == NULL)
+	{
+		// TODO (SJ) change to return, assert it?
+		ERROR_MSG("data->attr_conf is a null pointer!" << endl);
 		return ;
-    }
+	}
 
-    string fqdn_attr_name = data->attr_name;
-    int64_t ev_time = ((int64_t) data->get_date().tv_sec) * 1000;
-    int ev_time_us = data->get_date().tv_usec;
+	string fqdn_attr_name = data->attr_name;
+	int64_t ev_time = ((int64_t) data->get_date().tv_sec) * 1000;
+	int ev_time_us = data->get_date().tv_usec;
 
 	CassUuid uuid;
 	string facility = get_only_tango_host(fqdn_attr_name);
 	string attr_name = get_only_attr_name(fqdn_attr_name);
 	facility = add_domain(facility);
 
-    if(!find_attr_id(fqdn_attr_name, uuid))
+	if(!find_attr_id(fqdn_attr_name, uuid))
 	{
-		cerr << __func__<< ": Could not find ID for attribute " << fqdn_attr_name << endl;
-
+		ERROR_MSG("Could not find ID for attribute " << fqdn_attr_name << endl);
 		stringstream error_desc;
 		error_desc << "ERROR Could not find ID for attribute  \"" << fqdn_attr_name << "\": " << ends;
 		Tango::Except::throw_exception("insert_param_Attr", error_desc.str().c_str(), __func__);
 	}
 	else
-    {
-        char uuidStr[CASS_UUID_STRING_LENGTH];
+	{
+		char uuidStr[CASS_UUID_STRING_LENGTH];
 		cass_uuid_string(uuid,uuidStr);
-
-		if (logging_enabled)
-        	cout << __func__ << "ID found for attribute " << fqdn_attr_name << " = " << uuidStr << endl;
-    }
+		DEBUG_MSG("ID found for attribute " << fqdn_attr_name << " = " << uuidStr << endl);
+	}
 
 	ostringstream query_str;
+
 	query_str << "INSERT INTO " << m_keyspace_name << "." << PARAM_TABLE_NAME
-              << " (" << PARAM_COL_ID << "," << PARAM_COL_EV_TIME << "," << PARAM_COL_EV_TIME_US << ","
-              << PARAM_COL_INS_TIME << "," << PARAM_COL_INS_TIME_US << ","
-              << PARAM_COL_LABEL << "," << PARAM_COL_UNIT << "," << PARAM_COL_STANDARDUNIT << ","
+			  << " (" << PARAM_COL_ID << "," << PARAM_COL_EV_TIME << "," << PARAM_COL_EV_TIME_US << ","
+			  << PARAM_COL_INS_TIME << "," << PARAM_COL_INS_TIME_US << ","
+			  << PARAM_COL_LABEL << "," << PARAM_COL_UNIT << "," << PARAM_COL_STANDARDUNIT << ","
 			  << PARAM_COL_DISPLAYUNIT << "," << PARAM_COL_FORMAT << "," << PARAM_COL_ARCHIVERELCHANGE << ","
 			  << PARAM_COL_ARCHIVEABSCHANGE << "," << PARAM_COL_ARCHIVEPERIOD << "," << PARAM_COL_DESCRIPTION << ")";
 
-    query_str << " VALUES (?,?,?,"
+	query_str << " VALUES (?,?,?,"
 			  << "?,?,"
 			  << "?,?,?,"
 			  << "?,?,?,"
@@ -1525,21 +1586,22 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
 			  << ends;
 
 	CassStatement* statement = cass_statement_new(query_str.str().c_str(), 14);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_uuid(statement, 0, uuid);
-    // Get the current time
-    struct timespec ts;
-    if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
-    {
+	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+	cass_statement_bind_uuid(statement, 0, uuid);
+
+	// Get the current time
+	struct timespec ts;
+	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+	{
 		// TODO (SJ) Is this a bad error?
-        perror("clock_gettime()");
-    }
-    int64_t insert_time = ((int64_t) ts.tv_sec) * 1000;
-    int insert_time_us = ts.tv_nsec / 1000;
-    cass_statement_bind_int64(statement, 1, ev_time); // recv_time
-    cass_statement_bind_int32(statement, 2, ev_time_us); // recv_time_us
-    cass_statement_bind_int64(statement, 3, insert_time); // insert_time
-    cass_statement_bind_int32(statement, 4, insert_time_us); // insert_time_us
+		perror("clock_gettime()");
+	}
+	int64_t insert_time = ((int64_t) ts.tv_sec) * 1000;
+	int insert_time_us = ts.tv_nsec / 1000;
+	cass_statement_bind_int64(statement, 1, ev_time); // recv_time
+	cass_statement_bind_int32(statement, 2, ev_time_us); // recv_time_us
+	cass_statement_bind_int64(statement, 3, insert_time); // insert_time
+	cass_statement_bind_int32(statement, 4, insert_time_us); // insert_time_us
 
 	if (logging_enabled)
 	{
@@ -1555,29 +1617,33 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
 		cout << __func__<< " after binding description"<< endl;
 	}
 
-    cass_statement_bind_string(statement, 5, data->attr_conf->label.c_str()); // label
-    cass_statement_bind_string(statement, 6, data->attr_conf->unit.c_str()); // unit
-    cass_statement_bind_string(statement, 7, data->attr_conf->standard_unit.c_str()); // standard unit
-    cass_statement_bind_string(statement, 8, data->attr_conf->display_unit.c_str()); // display unit
-    cass_statement_bind_string(statement, 9, data->attr_conf->format.c_str()); // format
-    cass_statement_bind_string(statement,10, data->attr_conf->events.arch_event.archive_rel_change.c_str()); // archive relative range
-    cass_statement_bind_string(statement,11, data->attr_conf->events.arch_event.archive_abs_change.c_str()); // archive abs change
-    cass_statement_bind_string(statement,12, data->attr_conf->events.arch_event.archive_period.c_str()); // archive period
-    cass_statement_bind_string(statement,13, data->attr_conf->description.c_str()); // description
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable? => would be useful!
+	cass_statement_bind_string(statement, 5, data->attr_conf->label.c_str()); // label
+	cass_statement_bind_string(statement, 6, data->attr_conf->unit.c_str()); // unit
+	cass_statement_bind_string(statement, 7, data->attr_conf->standard_unit.c_str()); // standard unit
+	cass_statement_bind_string(statement, 8, data->attr_conf->display_unit.c_str()); // display unit
+	cass_statement_bind_string(statement, 9, data->attr_conf->format.c_str()); // format
+	cass_statement_bind_string(statement,10, data->attr_conf->events.arch_event.archive_rel_change.c_str()); // archive relative range
+	cass_statement_bind_string(statement,11, data->attr_conf->events.arch_event.archive_abs_change.c_str()); // archive abs change
+	cass_statement_bind_string(statement,12, data->attr_conf->events.arch_event.archive_period.c_str()); // archive period
+	cass_statement_bind_string(statement,13, data->attr_conf->description.c_str()); // description
+	cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the consistency tunable? => would be useful!
 
 	CassError rc = execute_statement(statement);
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", query_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::configure_Attr(string name,
-                                   int type/*DEV_DOUBLE, DEV_STRING, ..*/,
-                                   int format/*SCALAR, SPECTRUM, ..*/,
-                                   int write_type/*READ, READ_WRITE, ..*/,
-                                   unsigned int ttl /* hours, 0=infinity*/)
+								   int type/*DEV_DOUBLE, DEV_STRING, ..*/,
+								   int format/*SCALAR, SPECTRUM, ..*/,
+								   int write_type/*READ, READ_WRITE, ..*/,
+								   unsigned int ttl /* hours, 0=infinity*/)
 {
+	TRACE_MSG("Entering");
+
 	string facility = get_only_tango_host(name);
 	facility = add_domain(facility);
 	string attr_name = get_only_attr_name(name);
@@ -1590,11 +1656,11 @@ void HdbPPCassandra::configure_Attr(string name,
 	{
 		stringstream error_desc;
 		error_desc << "ERROR parsing attribute name  \"" << attr_name << "\": " << ends;
+		ERROR_MSG(error_desc.str() << endl);
 		Tango::Except::throw_exception("Parse Error", error_desc.str().c_str(), __func__);
 	}
 
-	if (logging_enabled)
-		cout << __func__ << ": name="<<name<<" -> facility="<<facility<<" attr_name="<<attr_name<< endl;
+	DEBUG_MSG("name="<<name<<" -> facility="<<facility<<" attr_name="<<attr_name<< endl);
 
 	string data_type = get_data_type(type, format, write_type);
 	CassUuid id;
@@ -1603,8 +1669,8 @@ void HdbPPCassandra::configure_Attr(string name,
 	//ID already present but different configuration (attribute type)
 	if(find_attr_result == FoundAttrWithDifferentType)
 	{
-		cerr << __func__ << ": "<< facility << "/" << attr_name << " already configured with different configuration" << endl;
-		cerr << "Please contact your administrator for this special case" << endl;
+		ERROR_MSG(facility << "/" << attr_name << " already configured with different configuration" << endl);
+		ERROR_MSG("Please contact your administrator for this special case" << endl);
 		// Need to contact an administrator in this case!?
 		// TODO (SJ) How is this handled?
 	}
@@ -1613,14 +1679,11 @@ void HdbPPCassandra::configure_Attr(string name,
 		//ID found and same configuration (attribute type): do nothing
 		if(find_attr_result == FoundAttrWithSameType)
 		{
-			if (logging_enabled)
-				cout << __func__ << ": ALREADY CONFIGURED with same configuration: "<< facility << "/" << attr_name << endl;
+			DEBUG_MSG("ALREADY CONFIGURED with same configuration: "<< facility << "/" << attr_name << endl);
 
 			if(conf_ttl != ttl)
 			{
-				if (logging_enabled)
-					cout << __func__ << ": .... BUT different ttl: updating " << conf_ttl << " to " << ttl << endl;
-
+				DEBUG_MSG(".... BUT different ttl: updating " << conf_ttl << " to " << ttl << endl);
 				update_ttl(ttl,facility,attr_name);
 			}
 			// If the last event was EVENT_REMOVE, add it again
@@ -1653,29 +1716,36 @@ void HdbPPCassandra::configure_Attr(string name,
 
 	// Insert into att_names table
 	insert_attr_name(facility,domain,family,member,attribute_name);
+
+	TRACE_MSG("Leaving");
 }
 
 void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name,
-                                   unsigned int ttl /* hours, 0=infinity*/)
+								   unsigned int ttl /* hours, 0=infinity*/)
 {
+	TRACE_MSG("Entering");
+
 	CassUuid uuid;
 
 	if(!find_attr_id(fqdn_attr_name, uuid))
 	{
 		stringstream error_desc;
 		error_desc << "ERROR Attribute " << fqdn_attr_name <<" NOT FOUND in HDB++ configuration table" << ends;
-		cerr << error_desc << endl;
-		Tango::Except::throw_exception("Attribute Not Found", error_desc.str().c_str(), "HdbPPCassandra::updateTTL_Attr");
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Not Found", error_desc.str(), __func__);
 	}
 
 	string facility = get_only_tango_host(fqdn_attr_name);
 	facility = add_domain(facility);
 	string attr_name = get_only_attr_name(fqdn_attr_name);
 	update_ttl(ttl,facility,attr_name);
+	TRACE_MSG("Leaving");
 }
 
 void  HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream remove_event_str;
 	CassUuid uuid;
 
@@ -1683,8 +1753,8 @@ void  HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 	{
 		stringstream error_desc;
 		error_desc << "ERROR Attribute " << fqdn_attr_name <<" NOT FOUND in HDB++ configuration table" << ends;
-		cerr << error_desc << endl;
-		Tango::Except::throw_exception("Attribute Not Found", error_desc.str().c_str(), "HdbPPCassandra::updateTTL_Attr");
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Not Found", error_desc.str().c_str(), __func__);
 	}
 
 	string event_name = "";
@@ -1697,8 +1767,8 @@ void  HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 			bool ret = find_last_event(uuid, last_event, fqdn_attr_name);
 			if(ret && last_event == EVENT_START)
 			{
-	    		// It seems there was a crash
-        		insert_history_event(EVENT_CRASH, uuid);
+				// It seems there was a crash
+				insert_history_event(EVENT_CRASH, uuid);
 			}
 			event_name = EVENT_START;
 			break;
@@ -1721,67 +1791,71 @@ void  HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 		default:
 		{
 			// TODO (SJ) Error?
-			cerr << __func__ << ": ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << endl;
+			ERROR_MSG("ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << endl);
 		}
 	}
 
 	insert_history_event(event_name, uuid);
+	TRACE_MSG("Leaving");
 }
 
 
 string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                            int data_format /* SCALAR, SPECTRUM */,
-                                            int write_type/*READ, READ_WRITE, ..*/,
-                                            int & nbQueryParams,
-                                            bool isNull,
+											int data_format /* SCALAR, SPECTRUM */,
+											int write_type/*READ, READ_WRITE, ..*/,
+											int & nbQueryParams,
+											bool isNull,
 											unsigned int ttl) const
 {
+	TRACE_MSG("Entering");
+
 	string table_name = get_table_name(tango_data_type, data_format, write_type);
 	ostringstream query_str;
 	nbQueryParams = 10;
+
 	query_str << "INSERT INTO " << m_keyspace_name << "." << table_name
-	          << " ("
-	          << SC_COL_ID << ","
-	          << SC_COL_PERIOD << ","
-	          << SC_COL_EV_TIME << ","
-	          << SC_COL_EV_TIME_US  << ","
-	          << SC_COL_RCV_TIME << ","
-	          << SC_COL_RCV_TIME_US << ","
-	          << SC_COL_INS_TIME << ","
-	          << SC_COL_INS_TIME_US << ","
-	          << SC_COL_QUALITY << ","
-	          << SC_COL_ERROR_DESC;
+			  << " ("
+			  << SC_COL_ID << ","
+			  << SC_COL_PERIOD << ","
+			  << SC_COL_EV_TIME << ","
+			  << SC_COL_EV_TIME_US  << ","
+			  << SC_COL_RCV_TIME << ","
+			  << SC_COL_RCV_TIME_US << ","
+			  << SC_COL_INS_TIME << ","
+			  << SC_COL_INS_TIME_US << ","
+			  << SC_COL_QUALITY << ","
+			  << SC_COL_ERROR_DESC;
 
 	// TODO: store dim_x, dim_y for spectrum attributes
 
-    // We don't insert the value if the value is null because
-    // it would create an unnecessary tombstone in Cassandra
-    if(!isNull)
-    {
-        if(write_type != Tango::WRITE) // RO or RW
-            query_str << "," << SC_COL_VALUE_R;
+	// We don't insert the value if the value is null because
+	// it would create an unnecessary tombstone in Cassandra
+	if(!isNull)
+	{
+		if(write_type != Tango::WRITE) // RO or RW
+			query_str << "," << SC_COL_VALUE_R;
 
-        if(write_type != Tango::READ)	// RW or WO
-            query_str << "," << SC_COL_VALUE_W;
-    }
+		if(write_type != Tango::READ)	// RW or WO
+			query_str << "," << SC_COL_VALUE_W;
+	}
 
 	query_str << ") VALUES (?,?,?,?,?,?,?,?,?,?";
 
 	if(!isNull)
-    {
-        if(write_type != Tango::WRITE) // RO or RW
-        {
-            query_str << ",?";
-            nbQueryParams++;
-        }
-        if(write_type != Tango::READ)	// RW or WO
-        {
-            query_str << ",?";
-            nbQueryParams++;
-        }
-    }
+	{
+		if(write_type != Tango::WRITE) // RO or RW
+		{
+			query_str << ",?";
+			nbQueryParams++;
+		}
+		if(write_type != Tango::READ)	// RW or WO
+		{
+			query_str << ",?";
+			nbQueryParams++;
+		}
+	}
 
-    query_str << ")" ;
+	query_str << ")" ;
 
 	if (ttl != 0)
 	{
@@ -1791,9 +1865,8 @@ string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DE
 
 	query_str << ends;
 
-	if (logging_enabled)
-		cout << __func__<< "Query = \"" << query_str.str() << "\"" << endl;
-
+	DEBUG_MSG("Query = \"" << query_str.str() << "\"" << endl);
+	TRACE_MSG("Leaving");
 	return query_str.str();
 }
 
@@ -1843,60 +1916,61 @@ string HdbPPCassandra::get_only_tango_host(string str)
  * @param name the attribute name extracted from the provided attr_name parameter (<name>)
  */
 int HdbPPCassandra::getDomainFamMembName(const string & attr_name,
-                                          string & domain,
-                                          string & family,
-                                          string & member,
-                                          string & name)
+										  string & domain,
+										  string & family,
+										  string & member,
+										  string & name)
 {
 	string::size_type	first_slash = attr_name.find("/");
 	if (first_slash == string::npos)
 	{
-		cerr << "getDomainFamMembName(" << attr_name << "): Error: there is no slash in attribute name" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): Error: there is no slash in attribute name" << endl);
 		return ERR_NO_SLASH_IN_ATTR;
 	}
 	string::size_type	second_slash = attr_name.find("/", first_slash+1);
 	if (second_slash == string::npos)
 	{
-		cerr << "getDomainFamMembName(" << attr_name << "): Error: there is only one slash in attribute name" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): Error: there is only one slash in attribute name" << endl);
 		return ERR_ONLY_ONE_SLASH_IN_ATTR;
 	}
 	string::size_type	third_slash = attr_name.find("/", second_slash+1);
 	if (third_slash == string::npos)
 	{
-		cerr << "getDomainFamMembName(" << attr_name << "): Error: there are only two slashes in attribute name" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): Error: there are only two slashes in attribute name" << endl);
 		return ERR_ONLY_TWO_SLASHES_IN_ATTR;
 	}
 	string::size_type last_slash = attr_name.rfind("/");
 	if(last_slash != third_slash)
 	{
 		// Too many slashes provided!
-		cerr << "getDomainFamMembName(" << attr_name << "): Too many slashes provided in attribute name" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): Too many slashes provided in attribute name" << endl);
 		return ERR_TOO_MANY_SLASHES_IN_ATTR;
 	}
 	if(first_slash == 0)
 	{
 		// empty domain
-		cerr << "getDomainFamMembName(" << attr_name << "): empty domain" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): empty domain" << endl);
 		return ERR_EMPTY_DOMAIN_IN_ATTR;
 	}
 	if(second_slash-first_slash-1 == 0)
 	{
 		// empty family
-		cerr << "getDomainFamMembName(" << attr_name << "): empty family" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): empty family" << endl);
 		return ERR_EMPTY_FAMILY_IN_ATTR;
 	}
 	if(third_slash-second_slash-1 == 0)
 	{
 		// empty member
-		cerr << "getDomainFamMembName(" << attr_name << "): empty member" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): empty member" << endl);
 		return ERR_EMPTY_MEMBER_IN_ATTR;
 	}
 	if(third_slash+1 == attr_name.length())
 	{
 		// empty atribute name
-		cerr << "getDomainFamMembName(" << attr_name << "): empty attribute name" << endl;
+		ERROR_MSG("getDomainFamMembName(" << attr_name << "): empty attribute name" << endl);
 		return ERR_EMPTY_ATTR_NAME_IN_ATTR;
 	}
+
 	domain = attr_name.substr(0,first_slash);
 	family = attr_name.substr(first_slash+1,second_slash-first_slash-1);
 	member = attr_name.substr(second_slash+1,third_slash-second_slash-1);
@@ -1948,7 +2022,7 @@ string HdbPPCassandra::add_domain(string str)
 			start = 0;
 		}
 		else
-        {
+		{
 			start = 8;	//tango:// len
 		}
 
@@ -2004,6 +2078,8 @@ void HdbPPCassandra::string_vector2map(vector<string> str, string separator, map
 //=============================================================================
 string HdbPPCassandra::get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const
 {
+	TRACE_MSG("Entering");
+
 	ostringstream data_type;
 
 	if(format==Tango::SCALAR)
@@ -2045,7 +2121,7 @@ string HdbPPCassandra::get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int
 			data_type << TYPE_DEV_ENCODED << "_"; break;
 		default:
 			// TODO (SJ) exception?
-			cerr << __func__ << "(" << type << ", ...): Type not supported (" << __FILE__ << ":" << __LINE__ << ")" << endl;
+			ERROR_MSG("(" << type << ", ...): Type not supported (" << __FILE__ << ":" << __LINE__ << ")" << endl);
 	}
 
 	if(write_type==Tango::READ)
@@ -2057,6 +2133,7 @@ string HdbPPCassandra::get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int
 		data_type << TYPE_RW;
 	}
 
+	TRACE_MSG("Leaving");
 	return data_type.str();
 }
 
@@ -2081,11 +2158,13 @@ string HdbPPCassandra::get_table_name(int type/*DEV_DOUBLE, DEV_STRING, ..*/, in
  *          -1 in case of error during the query execution
  **/
 void HdbPPCassandra::insert_attr_conf(const string & facility,
-								 	  const string & attr_name,
+									  const string & attr_name,
 									  const string & data_type,
 									  CassUuid & uuid,
 									  unsigned int ttl)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream insert_str;
 
 	insert_str << "INSERT INTO " << m_keyspace_name << "." << CONF_TABLE_NAME
@@ -2108,6 +2187,8 @@ void HdbPPCassandra::insert_attr_conf(const string & facility,
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", insert_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 /**
@@ -2121,6 +2202,8 @@ void HdbPPCassandra::insert_attr_conf(const string & facility,
  **/
 void HdbPPCassandra::insert_domain(const string & facility, const string & domain)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream insert_domains_str;
 
 	insert_domains_str << "INSERT INTO " << m_keyspace_name << "." << DOMAINS_TABLE_NAME
@@ -2136,6 +2219,8 @@ void HdbPPCassandra::insert_domain(const string & facility, const string & domai
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", insert_domains_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 /**
@@ -2150,6 +2235,8 @@ void HdbPPCassandra::insert_domain(const string & facility, const string & domai
  **/
 void HdbPPCassandra::insert_family(const string & facility, const string & domain, const string & family)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream insert_families_str;
 
 	insert_families_str << "INSERT INTO " << m_keyspace_name << "." << FAMILIES_TABLE_NAME
@@ -2166,6 +2253,8 @@ void HdbPPCassandra::insert_family(const string & facility, const string & domai
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", insert_families_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 /**
@@ -2181,6 +2270,8 @@ void HdbPPCassandra::insert_family(const string & facility, const string & domai
  **/
 void HdbPPCassandra::insert_member(const string & facility, const string & domain, const string & family, const string & member)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream insert_members_str;
 
 	insert_members_str << "INSERT INTO " << m_keyspace_name << "." << MEMBERS_TABLE_NAME
@@ -2199,6 +2290,8 @@ void HdbPPCassandra::insert_member(const string & facility, const string & domai
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", insert_members_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 /**
@@ -2216,6 +2309,8 @@ void HdbPPCassandra::insert_member(const string & facility, const string & domai
 void HdbPPCassandra::insert_attr_name(const string & facility, const string & domain, const string & family,
 									  const string & member, const string & attribute_name)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream insert_att_names_str;
 
 	insert_att_names_str << "INSERT INTO " << m_keyspace_name << "." << ATT_NAMES_TABLE_NAME
@@ -2236,6 +2331,8 @@ void HdbPPCassandra::insert_attr_name(const string & facility, const string & do
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing insert query", insert_att_names_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 /**
@@ -2251,6 +2348,8 @@ void HdbPPCassandra::insert_attr_name(const string & facility, const string & do
 
 void HdbPPCassandra::update_ttl(unsigned int ttl, const string & facility, const string & attr_name)
 {
+	TRACE_MSG("Entering");
+
 	ostringstream update_ttl_query_str;
 
 	update_ttl_query_str << "UPDATE " << m_keyspace_name << "." << CONF_TABLE_NAME
@@ -2268,16 +2367,22 @@ void HdbPPCassandra::update_ttl(unsigned int ttl, const string & facility, const
 
 	if (rc != CASS_OK)
 		throw_execute_exception("ERROR executing update tll query", update_ttl_query_str.str(), rc, __func__);
+
+	TRACE_MSG("Leaving");
 }
 
 CassError HdbPPCassandra::execute_statement(CassStatement * statement)
 {
+	TRACE_MSG("Entering");
+
 	CassFuture* future = cass_session_execute(mp_session, statement);
 	cass_future_wait(future);
 	CassError rc = cass_future_error_code(future);
 
 	cass_future_free(future);
 	cass_statement_free(statement);
+
+	TRACE_MSG("Leaving");
 	return rc;
 }
 
@@ -2285,7 +2390,7 @@ void HdbPPCassandra::throw_execute_exception(string message, string query, CassE
 {
 	stringstream error_desc;
 	error_desc << message << " \"" << query << "\": " << cass_error_desc(error) << ends;
-	cerr << error_desc.str() << " at: " << origin << endl;
+	ERROR_MSG(error_desc.str() << endl);
 	Tango::Except::throw_exception("EXECUTE ERROR", error_desc.str().c_str(), origin);
 }
 
@@ -2298,46 +2403,44 @@ void HdbPPCassandra::throw_execute_exception(string message, string query, CassE
  */
 void HdbPPCassandra::set_cassandra_logging_level(string level)
 {
-    if (level == "DISABLED")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_DISABLED);
+	if (level == "DISABLED")
+		cass_log_set_level(cassandra_logging_level = CASS_LOG_DISABLED);
 
-    else if (level == "CRITICAL")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_CRITICAL);
+	else if (level == "CRITICAL")
+		cass_log_set_level(cassandra_logging_level = CASS_LOG_CRITICAL);
 
-    else if (level ==  "ERROR")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_ERROR);
+	else if (level ==  "ERROR")
+		cass_log_set_level(cassandra_logging_level = CASS_LOG_ERROR);
 
-    else if (level ==  "WARN")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_WARN);
+	else if (level ==  "WARN")
+		cass_log_set_level(cassandra_logging_level = CASS_LOG_WARN);
 
-    else if (level ==  "INFO")
+	else if (level ==  "INFO")
 		cass_log_set_level(cassandra_logging_level = CASS_LOG_INFO);
 
-    else if (level ==  "DEBUG")
+	else if (level ==  "DEBUG")
 		cass_log_set_level(cassandra_logging_level = CASS_LOG_DEBUG);
 
-    else if (level ==  "TRACE")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_TRACE);
+	else if (level ==  "TRACE")
+		cass_log_set_level(cassandra_logging_level = CASS_LOG_TRACE);
 
-    else
-    {
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_DISABLED);
-        cerr << __func__ << ": ERROR invalid cassandra driver logging level" << endl;
-        cerr << __func__ << ": Log level set by default to: DISABLED" << endl;
-    }
+	else
+	{
+		cass_log_set_level(cassandra_logging_level = CASS_LOG_DISABLED);
+		ERROR_MSG("ERROR invalid cassandra driver logging level" << endl);
+		ERROR_MSG("Log level set by default to: DISABLED" << endl);
+	}
 
-    if (logging_enabled)
-    {
-        cout << __func__ << ": Cassandra driver logging to to: ";
+	if (logging_enabled)
+	{
+		DEBUG_MSG("Cassandra driver logging to to: ");
 
-        if (cassandra_logging_level == CASS_LOG_DISABLED)
-            cout << "DISABLED" << endl;
-        else
-            cout << cass_log_level_string(cassandra_logging_level) << endl;
-    }
+		if (cassandra_logging_level == CASS_LOG_DISABLED)
+			DEBUG_MSG("DISABLED" << endl);
+		else
+			DEBUG_MSG(cass_log_level_string(cassandra_logging_level) << endl);
+	}
 }
-
-
 
 //=============================================================================
 //=============================================================================

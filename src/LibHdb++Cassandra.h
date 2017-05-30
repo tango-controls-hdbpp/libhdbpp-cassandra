@@ -48,7 +48,6 @@ private:
 
 public:
 	~HdbPPCassandra();
-
 	HdbPPCassandra(vector<string> configuration);
 
 	virtual void insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type);
@@ -62,6 +61,15 @@ public:
 
 	virtual void updateTTL_Attr(string name, unsigned int ttl/*hours, 0=infinity*/);
 	virtual void event_Attr(string fqdn_attr_name, unsigned char event);
+
+    // left exposed while we look into updating and creating new tests
+    /**
+     * This method will try to get the corresponding attribute ID from its name and facility name (Tango Host)
+     **/
+    bool find_attr_id(string fqdn_attr_name, CassUuid & ID);
+    bool find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
+    bool find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
+    FindAttrResult find_attr_id_type_and_ttl(string facility, string attr_name, CassUuid & ID, string attr_type, unsigned int &conf_ttl);
 
 private:
 
@@ -95,13 +103,7 @@ private:
 	 **/
 	bool find_last_event(const CassUuid & ID, string &last_event, const string & fqdn_attr_name);
 
-	/**
-	 * This method will try to get the corresponding attribute ID from its name and facility name (Tango Host)
-	 **/
-	bool find_attr_id(string fqdn_attr_name, CassUuid & ID);
-	bool find_attr_id_and_ttl(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
-	bool find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid & ID, unsigned int & ttl);
-	FindAttrResult find_attr_id_type_and_ttl(string facility, string attr_name, CassUuid & ID, string attr_type, unsigned int &conf_ttl);
+
 
 	string get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const;
 	string get_table_name(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int format/*SCALAR, SPECTRUM, ..*/, int write_type/*READ, READ_WRITE, ..*/) const;
