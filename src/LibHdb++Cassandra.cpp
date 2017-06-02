@@ -346,14 +346,17 @@ void HdbPPCassandra::connect_session()
 	CassError rc = cass_future_error_code(future);
 	cass_future_free(future);
 
-	if (rc != CASS_OK) {
+	if (rc != CASS_OK)
+	{
 		ERROR_MSG("Cassandra connect session error: " << cass_error_desc(rc) << endl);
 		stringstream error_desc;
 		error_desc << "Error connecting to the Cassandra Cluster: " << cass_error_desc(rc);
 		cass_cluster_free(mp_cluster);
 		mp_cluster = 0;
 		Tango::Except::throw_exception("CassandraConnectionError", error_desc.str(), __func__);
-	} else {
+	}
+	else
+	{
 		DEBUG_MSG("Cassandra connection OK" << endl);
 	}
 
@@ -457,8 +460,7 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid 
 
 		if (cassTtlVal == NULL)
 		{
-			DEBUG_MSG("Column ttl does not exist???" << endl);
-			// TODO (SJ) Is this an error condition?
+			DEBUG_MSG("Column ttl does not exist" << endl);
 		}
 		else
 		{
@@ -470,11 +472,26 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(string fqdn_attr_name, CassUuid 
 		if(get_ttl_cass_error != CASS_OK)
 		{
 			if (get_ttl_cass_error == CASS_ERROR_LIB_NULL_VALUE)
+			{
+				// The ttl was null, perhaps it was removed, or missing due to an
+				// upgrade. This is not an error condition
 				DEBUG_MSG("TTL value is NULL" << endl);
+			}
+			else
+			{
+				cass_result_free(result);
+				cass_iterator_free(iterator);
+				cass_future_free(future);
+				cass_statement_free(statement);
 
-			DEBUG_MSG("An error occured: " << cass_error_desc(get_ttl_cass_error) << endl);
-			DEBUG_MSG("cass_value_get_int32 for ttl detected a NULL value" << endl);
-			// TODO (SJ) Is this an error condition?
+				stringstream error_desc;
+
+				error_desc << "An unexpected database error occured when trying to retrieve the TTL: "
+						   << cass_error_desc(get_ttl_cass_error) << ends;
+
+				ERROR_MSG(error_desc.str() << endl);
+				Tango::Except::throw_exception("Database Error", error_desc.str(), __func__);
+			}
 
 			ttl = 0;
 		}
@@ -627,8 +644,11 @@ void HdbPPCassandra::extract_and_bind_bool(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -670,8 +690,11 @@ void HdbPPCassandra::extract_and_bind_uchar(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -713,8 +736,11 @@ void HdbPPCassandra::extract_and_bind_short(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -756,8 +782,11 @@ void HdbPPCassandra::extract_and_bind_ushort(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -799,8 +828,11 @@ void HdbPPCassandra::extract_and_bind_long(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -842,8 +874,11 @@ void HdbPPCassandra::extract_and_bind_ulong(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -885,8 +920,11 @@ void HdbPPCassandra::extract_and_bind_long64(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -928,8 +966,11 @@ void HdbPPCassandra::extract_and_bind_ulong64(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
-		cass_statement_bind_null(statement, param_index);
+		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -971,8 +1012,11 @@ void HdbPPCassandra::extract_and_bind_string(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -1025,9 +1069,11 @@ void HdbPPCassandra::extract_and_bind_state(CassStatement* statement,
 	}
 	else
 	{
-		// TODO (SJ) Should we be doing something with these?
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -1123,8 +1169,11 @@ void HdbPPCassandra::extract_and_bind_float(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -1176,8 +1225,11 @@ void HdbPPCassandra::extract_and_bind_double(CassStatement* statement,
 	}
 	else
 	{
-		ERROR_MSG("extract_read failed for attribute "<< data->attr_name << endl);
 		cass_statement_bind_null(statement,param_index);
+		stringstream error_desc;
+		error_desc << "Failed to extract the attribute from the Tango EventData. Possible type mismatch?" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Attribute Extraction Error",error_desc.str(),__func__);
 	}
 
 	TRACE_MSG("Leaving");
@@ -1235,15 +1287,16 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 					extract_and_bind_encoded(statement,param_index, data_format, data, EXTRACT_READ); break;
 				default:
 				{
-					// TODO (SJ) Handle error state how?
-					DEBUG_MSG("Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported" << endl);
-					TRACE_MSG("Leaving");
-					return;
+					stringstream error_desc;
+					error_desc << "Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported" << ends;
+					ERROR_MSG(error_desc.str() << endl);
+					Tango::Except::throw_exception("Attribute Not Supported",error_desc.str(),__func__);
 				}
 			} // switch(data_type)
 		}
 		param_index++;
 	}
+
 	if(write_type != Tango::READ)
 	{
 		if(isNull)
@@ -1286,9 +1339,10 @@ void HdbPPCassandra::extract_and_bind_rw_values(CassStatement* statement,
 					extract_and_bind_encoded(statement,param_index, data_format, data, EXTRACT_SET); break;
 				default:
 				{
-					ERROR_MSG("Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported" << endl);
-					TRACE_MSG("Leaving");
-					return;
+					stringstream error_desc;
+					error_desc << "Attribute " << data->attr_name << " type (" << (int)(data_type) << ")) not supported" << ends;
+					ERROR_MSG(error_desc.str() << endl);
+					Tango::Except::throw_exception("Attribute Not Supported",error_desc.str(),__func__);
 				}
 			} // switch(data_type)
 		}
@@ -1356,11 +1410,12 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 {
 	TRACE_MSG("Entering");
 
-	if(data == 0)
+	if(data == NULL)
 	{
-		// TODO (SJ) assert this...
-		ERROR_MSG("HdbPPCassandra::insert_Attr(): data is a null pointer!" << endl);
-		return;
+		stringstream error_desc;
+		error_desc << "Unexpected null Tango::EventData" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Null Parameter",error_desc.str(),__func__);
 	}
 
 	string fqdn_attr_name = data->attr_name;
@@ -1534,16 +1589,18 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
 
 	if(data == NULL)
 	{
-		// TODO (SJ) assert this?
-		ERROR_MSG("HdbPPCassandra::insert_param_Attr(): data is a null pointer!" << endl);
-		return ;
+		stringstream error_desc;
+		error_desc << "Unexpected null Tango::AttrConfEventData" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Null Parameter",error_desc.str(),__func__);
 	}
 
 	if(data->attr_conf == NULL)
 	{
-		// TODO (SJ) change to return, assert it?
-		ERROR_MSG("data->attr_conf is a null pointer!" << endl);
-		return ;
+		stringstream error_desc;
+		error_desc << "Unexpected null in Tango::AttrConfEventData field attr_conf" << ends;
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Null Parameter",error_desc.str(),__func__);
 	}
 
 	string fqdn_attr_name = data->attr_name;
@@ -1669,10 +1726,13 @@ void HdbPPCassandra::configure_Attr(string name,
 	//ID already present but different configuration (attribute type)
 	if(find_attr_result == FoundAttrWithDifferentType)
 	{
-		ERROR_MSG(facility << "/" << attr_name << " already configured with different configuration" << endl);
-		ERROR_MSG("Please contact your administrator for this special case" << endl);
-		// Need to contact an administrator in this case!?
-		// TODO (SJ) How is this handled?
+		stringstream error_desc;
+
+		error_desc << facility << "/" << attr_name << " already configured with different configuration."
+				   << "Please contact your administrator for this special case" << endl;
+
+		ERROR_MSG(error_desc.str() << endl);
+		Tango::Except::throw_exception("Null Parameter",error_desc.str(),__func__);
 	}
 	else
 	{
@@ -1790,8 +1850,10 @@ void  HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 		}
 		default:
 		{
-			// TODO (SJ) Error?
-			ERROR_MSG("ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << endl);
+			stringstream error_desc;
+			error_desc << "ERROR for "<< fqdn_attr_name << " event=" << (int)event << " NOT SUPPORTED" << ends;
+			ERROR_MSG(error_desc.str() << endl);
+			Tango::Except::throw_exception("Attribute Not Found", error_desc.str(), __func__);
 		}
 	}
 
@@ -2120,8 +2182,10 @@ string HdbPPCassandra::get_data_type(int type/*DEV_DOUBLE, DEV_STRING, ..*/, int
 		case Tango::DEV_ENCODED:
 			data_type << TYPE_DEV_ENCODED << "_"; break;
 		default:
-			// TODO (SJ) exception?
-			ERROR_MSG("(" << type << ", ...): Type not supported (" << __FILE__ << ":" << __LINE__ << ")" << endl);
+			stringstream error_desc;
+			error_desc << "(" << type << ", ...): Type not supported (" << __FILE__ << ":" << __LINE__ << ")" << ends;
+			ERROR_MSG(error_desc.str() << endl);
+			Tango::Except::throw_exception("Attribute Not Found", error_desc.str(), __func__);
 	}
 
 	if(write_type==Tango::READ)
