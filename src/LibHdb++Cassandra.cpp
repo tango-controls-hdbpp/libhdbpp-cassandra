@@ -28,7 +28,7 @@
 
 // trace logging for just about every function can be compiled in for
 // debugging work. Normally this is switched off
-#define TRACE_ENABLED
+// #define TRACE_ENABLED
 
 #ifdef TRACE_ENABLED
 	#define TRACE_MSG(str) \
