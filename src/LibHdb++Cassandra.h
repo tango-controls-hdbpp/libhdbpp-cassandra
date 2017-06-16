@@ -1,4 +1,4 @@
-/* Copyright (C) : 2017
+/* Copyright (C) : 2014-2017
    European Synchrotron Radiation Facility
    BP 220, Grenoble 38043, FRANCE
 
@@ -15,7 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the Lesser GNU General Public License
-   along with Foobar.  If not, see <http://www.gnu.org/licenses/>. */
+   along with libhdb++cassandra.  If not, see <http://www.gnu.org/licenses/>. */
 
 #ifndef _HDBPP_CASSANDRA_H
 #define _HDBPP_CASSANDRA_H
@@ -36,7 +36,7 @@ namespace HDBPP
  * @brief HdbPPCassandra implements the AbstractDB interface to store tango event data in a
  * cassandra database cluster.
  *
-  *The HdbPPCassandra driver is loaded dynamically from libhdbpp (@see HdbClient)
+ * The HdbPPCassandra driver is loaded dynamically from libhdbpp (@see HdbClient)
  * when the class or device configuration requests this archiver library. A valid configuration
  * must be passed as the constructor parameter, @see HdbPPCassandra() for configuration parameter
  * documentation
@@ -74,7 +74,7 @@ public:
     /**
      * @brief HdbPPCassandra destructor
      *
-     * The destructor will attempt to disconnect an open cassandra session
+     * The destructor will attempt to disconnect an open Cassandra session
      */
     ~HdbPPCassandra();
 
@@ -84,50 +84,58 @@ public:
      * The configuration parameters must contain the following strings:
      *
      * - Mandatory:
-     *     - contact_points: Cassandra cluster contract host, eg cassandra_db
+     *     - contact_points: Cassandra cluster contact point hostname, eg cassandra_db,
+     *       given as a comma seperated list. The contact points are used to initialize 
+     *       the driver and it will automatically discover the rest of the nodes in your 
+     *       Cassandra cluster. Tip: include more than one contact point to be robust 
+     *       against node failures.
      *     - keyspace: Keyspace to use within the cluster, eg, hdb_test
      * - Optional:
      *      - user: Cluster log in user name
      *      - password: Password for above user name
-     *      - local_dc: Datacenter name
+     *      - local_dc: Datacenter name used for queries with LOCAL consistency 
+     *        level (e.g. LOCAL_QUORUM). In the current version of this library, all the
+     *        statements are executed with LOCAL_QUORUM consistency level.     
      * - Debug:
      *     - logging_enabled: Either true to enable command line debug, or false to disable
-     *     - cassandra_driver_log_level  Cassandra logging level, see CassLogLevel in Datastax
+     *     - cassandra_driver_log_level:  Cassandra logging level, see CassLogLevel in Datastax
      * documentation. This
      *       must be one of the follow values:
-     *          - TRACE: Equivalant CASS_LOG_TRACE
-     *          - DEBUG: Equivalant CASS_LOG_DEBUG
-     *          - INFO: Equivalant CASS_LOG_INFO
-     *          - WARN: Equivalant CASS_LOG_WARN
-     *          - ERROR: Equivalant CASS_LOG_ERROR
-     *          - CRITICAL: Equivalant CASS_LOG_CRITICAL
-     *          - DISABLED: Equivalant CASS_LOG_DISABLED
+     *          - TRACE: Equivalent CASS_LOG_TRACE
+     *          - DEBUG: Equivalent CASS_LOG_DEBUG
+     *          - INFO: Equivalent CASS_LOG_INFO
+     *          - WARN: Equivalent CASS_LOG_WARN
+     *          - ERROR: Equivalent CASS_LOG_ERROR
+     *          - CRITICAL: Equivalent CASS_LOG_CRITICAL
+     *          - DISABLED: Equivalent CASS_LOG_DISABLED
      *
      * @param configuration A list of configuration parameters to start the driver with.
      */
     HdbPPCassandra(vector<string> configuration);
 
     /**
-     * @brief Insert an attribute insert event into the database
+     * @brief Insert an attribute archive event into the database
      *
-     * Inserts an attribute insert event for the EventData into the database. Neither empty
-     * or invalid attributes will be archived, and if the attribute does not exist an
-     * exception will be raised.
+     * Inserts an attribute archive event for the EventData into the database. If the attribute 
+     * does not exist in the database, then an exception will be raised. If the attr_value
+     * field of the data parameter if empty, then the attribute is in an error state 
+     * and the error message will be archived.  
      *
-     * @param data Tango event data about the attibute.
-     * @param ev_data_type HDB event data for the attibute.
+     * @param data Tango event data about the attribute.
+     * @param ev_data_type HDB event data for the attribute.
      * @throw Tango::DevFailed
      */
     virtual void insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type);
 
     /**
-     * @brief Inserts an attibute parameter event into the database
+     * @brief Inserts the attribute configuration data.
      *
-     * Inserts the parameter data (attribute event data) about an existing attribute
-     * into the database. The attribute must exist, otherwise an exception is thrown.
+     * Inserts the attribute configuration data (Tango Attribute Configuration event data) 
+     * into the database. The attribute must be configured to be stored in HDB++, 
+     * otherwise an exception will be thrown.
      *
-     * @param data Tango event data about the attibute.
-     * @param ev_data_type HDB event data for the attibute.
+     * @param data Tango event data about the attribute.
+     * @param ev_data_type HDB event data for the attribute.
      * @throw Tango::DevFailed
      */
     virtual void insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type);
@@ -155,7 +163,8 @@ public:
     /**
      * @brief Update the ttl value for an attribute.
      *
-     * The attribute must exist, otherwise an exception is raised.
+     * The attribute must have been configured to be stored in HDB++, otherwise an exception 
+     * is raised
      *
      * @param name Attribute name.
      * @param ttl The time to live in hour, 0 for infinity
@@ -166,8 +175,11 @@ public:
     /**
     * @brief Record a start, Stop, Pause or Remove history event for an attribute.
     *
-    * Inserts a history event for the attibute name passed to the function. The attribute
-    * must exists in the database otherwise an exception is raised.
+    * Inserts a history event for the attribute name passed to the function. The attribute 
+    * must have been configured to be stored in HDB++, otherwise an exception is raised. 
+    * This function will also insert an additional CRASH history event before the START 
+    * history event if the given event parameter is DB_START and if the last history event 
+    * stored was also a START event.
     *
     * @param fqdn_attr_name Attribute name.
     * @param event

@@ -1,4 +1,4 @@
-/* Copyright (C) : 2017
+/* Copyright (C) : 2014-2017
    European Synchrotron Radiation Facility
    BP 220, Grenoble 38043, FRANCE
 
@@ -15,7 +15,7 @@
    GNU General Public License for more details.
 
    You should have received a copy of the Lesser GNU General Public License
-   along with Foobar.  If not, see <http://www.gnu.org/licenses/>. */
+   along with libhdb++cassandra.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "LibHdb++Cassandra.h"
 
@@ -1596,11 +1596,13 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 
     data->attr_value->reset_exceptions(
         Tango::DeviceAttribute::isempty_flag); // disable is_empty exception
+
     if (data->attr_value->is_empty())
     {
         DEBUG_MSG("no value will be archived... (Attr Value is empty)" << endl);
         is_null = true;
     }
+
     if (quality == Tango::ATTR_INVALID)
     {
         DEBUG_MSG("no value will be archived... (Invalid Attribute)" << endl);
@@ -1642,6 +1644,7 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     }
 
     int nb_query_params = 0;
+    
     string query_str =
         get_insert_query_str(data_type, data_format, write_type, nb_query_params, is_null, ttl);
 
