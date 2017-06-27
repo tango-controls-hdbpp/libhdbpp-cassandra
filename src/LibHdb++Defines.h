@@ -24,7 +24,7 @@
 
 /** 
  * @namespace HDBPP
- * @brief HDBPP encapsulates all the various classes required for the libhdbpp-cassandra 
+ * @brief HDBPP contains all the various classes required for the libhdbpp-cassandra 
  * shared library
  *
  * The namaspace currently contains both the exposed HdbPPCassandra class and a number 
