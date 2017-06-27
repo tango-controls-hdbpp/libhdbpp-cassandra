@@ -22,28 +22,61 @@
 
 #include <chrono>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <string>
 #include <vector>
 
 namespace HDBPP
 {
-// available log levels, the values are important, since they will be used
-// to quick deference a vector inside the logging class to find the string
-// value of each level
-const int Disabled = 0;
-const int Error = 1;
-const int Warning = 2;
-const int Debug = 3;
-const int Trace = 4;
+/** 
+ * @enum LoggingLevel
+ * \brief Possible logging levels for the Log class
+ *
+ * Available log levels, the values are important, since they will be used
+ * to quick deference a vector inside the logging class to find the string
+ * value of each level
+ */
+enum LoggingLevel 
+{ 
+    Disabled = 0, /// Disable all logging
+    Error = 1, /// Only log messages sent at the Error level
+    Warning = 2, /// Only log messages sent at the Error and Warning level
+    Debug = 3, /// Only log messages sent at the Debug level and above
+    Trace = 4 /// Trace is used for the trace macro to trace function call
+ };
 
+/**
+ * @class Log
+ * @ingroup HDBPP-Implementation
+ * @brief Simple logger to emulate stream based logging.
+ *
+ * This simple logger both provides a clean stream like logging interface and
+ * future proofs changes to the logging system to changes. The logging can be
+ * redirected from this class to, for example, a file, another stream or even
+ * the tango logging system.
+ */
 class Log
 {
 public:
     typedef std::ostream &(*ManipFn)(std::ostream &);
     typedef std::ios_base &(*FlagsFn)(std::ios_base &);
 
-    Log(int level) : _at_level(level) {}
+    /**
+     * @brief Construct an Log object
+     *
+     * The logger is a functor, and its logging is carried out in a private class
+     * after its stream has been filled with string data
+     * @param level Intended logging level
+    */
+    Log(LoggingLevel level) : _at_level(level) {}
+
+    /**
+     * @brief Destroy a Log object
+     *
+     * The logger is a functor, and its logging is carried out in a private class
+     * after its stream has been filled with string data
+    */
     virtual ~Log() {}
 
     // endl, flush, setw, setfill, etc.
@@ -64,27 +97,44 @@ public:
         return *this;
     }
 
+    /**
+     * @brief Streaming operator
+     *
+     * The item is streamed into the internal string stream to be flushed when we
+     * hit an endl.
+     *
+     * @param item Item to be output
+    */
     template <typename T> Log &operator<<(const T &item)
     {
         _str_stream << item;
         return *this;
     }
 
-    static int &LogLevel()
+    /**
+     * @brief Return a reference to a static log level, allowing the level to be set
+    */
+    static LoggingLevel &LogLevel()
     {
         // default state for the logger is disabled, the user must enable debugging
-        static int level = Disabled;
+        static LoggingLevel level = Disabled;
         return level;
     }
 
-    static std::string ToString(int level)
+    /**
+     * @brief Convert log level to string via internal static variables
+    */
+    static std::string ToString(LoggingLevel level)
     {
         // this vector of strings must match the const ints above
         static std::vector<std::string> as_strings = {"Disabled", "Error", "Warning", "Debug", "Trace"};
-        return as_strings[Log::LogLevel()];
+        return as_strings[static_cast<int>(Log::LogLevel())];
     }
 
 private:
+
+    // flush() actually does the logging. It prefixes some basic time stamp information
+    // to the line, just down to the seconds for now.
     void flush()
     {
         // generate a timestamp (found this code on stackexchange!)
@@ -92,10 +142,16 @@ private:
         auto now_time_t = std::chrono::system_clock::to_time_t(now);
         auto now_tm = std::localtime(&now_time_t);
 
+        auto tse = now.time_since_epoch();
+        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(tse).count() % 1000;        
+
         // prefix it to our message, we could add any level of detail here
         // and push the message to multiple sinks
-        std::cout << "(" << now_tm->tm_hour << ":" << now_tm->tm_min << ":" << now_tm->tm_sec
-                  << ") " << Log::ToString(_at_level) << " " << _str_stream.str();
+        std::cout << now_tm->tm_hour << ":" 
+                  << now_tm->tm_min << ":" 
+                  << now_tm->tm_sec << ":"
+                  << std::setfill('0') << std::setw(3) << milliseconds << " "
+                  << Log::ToString(_at_level) << " " << _str_stream.str();
 
         _str_stream.clear();
     }
@@ -104,29 +160,30 @@ private:
     Log &operator=(const Log &) { return *this; }
 
     std::stringstream _str_stream;
-    int _at_level;
+    LoggingLevel _at_level;
 };
 
 // This is the main logging macro, we use a macro like this to allow the level,
-// line and function to be prefixed to each line of debug
+// line and function to be prefixed to each line of debug. Also filters out 
+// unnecessary logging level calls.
 #define LOG(level)                                                                                 \
     if (level <= Log::LogLevel())                                                                  \
-    Log(level) << "(" << __func__ << ":" << __LINE__ << ") "
+        Log(level) << "(" << __func__ << ":" << __LINE__ << ") "
 
 // To trace function calls, enable this define, this will produce a lot of
-// additional debug
+// additional debug and should be kept turned off by default
 //#define TRACE_FUNCTIONS
 
 #ifdef TRACE_FUNCTIONS
-#define TRACE_ENTER                                                                                \
-    Log(Trace) << "(" < < < __func__ << ":" << __LINE__ << ") "                                    \
-                                     << "Enter" << endl
-#define TRACE_EXIT                                                                                 \
-    Log(Trace) << "(" << __func__ << ":" << __LINE__ << ") "                                       \
-               << "Exit" << endl
+    #define TRACE_ENTER                                                                                \
+        Log(Trace) << "(" < < < __func__ << ":" << __LINE__ << ") "                                    \
+                                        << "Enter" << endl
+    #define TRACE_EXIT                                                                                 \
+        Log(Trace) << "(" << __func__ << ":" << __LINE__ << ") "                                       \
+                << "Exit" << endl
 #else
-#define TRACE_ENTER
-#define TRACE_EXIT
+    #define TRACE_ENTER
+    #define TRACE_EXIT
 #endif
 
 }; // namespace HDBPP

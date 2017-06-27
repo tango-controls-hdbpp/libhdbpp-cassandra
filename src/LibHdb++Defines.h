@@ -22,6 +22,27 @@
 
 #include <string>
 
+/** 
+ * @namespace HDBPP
+ * @brief HDBPP encapsulates all the various classes required for the libhdbpp-cassandra 
+ * shared library
+ *
+ * The namaspace currently contains both the exposed HdbPPCassandra class and a number 
+ * of helper classes that break out functionality from HdbPPCassandra. In future it 
+ * may be the case we hide some of these helper classes inside a inner namespace,
+ * to unclutter the HDBPP namespace.
+ */
+
+/**
+ * @defgroup HDBPP-Interface HDBPP Interface
+ * External interface used to archive tango event data into cassandra.
+ */
+
+/**
+ * @defgroup HDBPP-Implementation HDBPP Implementation
+ * Internal implementation classes for this shared library
+ */
+
 const std::string TYPE_SCALAR = "scalar";
 const std::string TYPE_ARRAY = "array";
 

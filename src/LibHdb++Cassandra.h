@@ -33,7 +33,7 @@ namespace HDBPP
 {
 /**
  * @class HdbPPCassandra
- * @ingroup HDB++ Interface
+ * @ingroup HDBPP-Interface
  * @brief HdbPPCassandra implements the AbstractDB interface to store tango event data in a
  * cassandra database cluster.
  *
@@ -74,7 +74,6 @@ private:
     CassCluster *mp_cluster;
     CassSession *mp_session;
     string m_keyspace_name;
-    bool logging_enabled;
     CassLogLevel cassandra_logging_level;
 
 public:
@@ -194,15 +193,18 @@ public:
     */
     virtual void event_Attr(string fqdn_attr_name, unsigned char event);
 
-    // left exposed while we look into updating and creating new tests
-    bool find_attr_id(AttributeName &attr_name, CassUuid &ID);
-    bool find_attr_id_and_ttl(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
-    bool find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
-    FindAttrResult find_attr_id_type_and_ttl(AttributeName &attr_name, CassUuid &ID, string attr_type, unsigned int &conf_ttl);
-
 private:
     void connect_session();
     string remove_domain(string facility);
+
+    bool find_attr_id(AttributeName &attr_name, CassUuid &ID);
+    bool find_attr_id_and_ttl(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
+    bool find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
+
+    FindAttrResult find_attr_id_type_and_ttl(AttributeName &attr_name,
+                                             CassUuid &ID,
+                                             string attr_type,
+                                             unsigned int &conf_ttl);
 
     bool find_last_event(const CassUuid &ID, string &last_event, AttributeName &attr_name);
 

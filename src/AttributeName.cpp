@@ -43,7 +43,10 @@ const std::string &AttributeName::fully_qualified_attribute_name() const
     if (_fqdn_attr_name.empty())
     {
         stringstream error_desc;
-        error_desc << "ERROR _fqdn_attr_name attribute name parameter not set. Must be set before use" << ends;
+
+        error_desc << "ERROR _fqdn_attr_name attribute name parameter not set. Must be set before use"
+                   << ends;
+
         LOG(Error) << error_desc.str() << endl;
         Tango::Except::throw_exception(EXCEPTION_TYPE_ATTR_NAME, error_desc.str().c_str(), __func__);
     }
@@ -118,7 +121,9 @@ AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const
 
     if (second_slash == string::npos)
     {
-        LOG(Error) << "(" << fqdn_attr_name << "): Error: there is only one slash in attribute name" << endl;
+        LOG(Error) << "(" << fqdn_attr_name << "): Error: there is only one slash in attribute name"
+                   << endl;
+
         return AttrNameErrors::OnlyOneSlashInAttribute;
     }
 
@@ -126,7 +131,9 @@ AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const
 
     if (third_slash == string::npos)
     {
-        LOG(Error) << "(" << fqdn_attr_name << "): Error: there are only two slashes in attribute name" << endl;
+        LOG(Error) << "(" << fqdn_attr_name
+                   << "): Error: there are only two slashes in attribute name" << endl;
+
         return AttrNameErrors::OnlyTwoSlashesInAttribute;
     }
 
@@ -182,11 +189,10 @@ string AttributeName::get_attr_tango_host(const string &fqdn_attr_name)
     string::size_type start = fqdn_attr_name.find("tango://");
 
     if (start == string::npos)
-    {
-        return "unknown"; // TODO ?
-    }
+        start = 0;
+    else
+        start = 8; // tango:// len
 
-    start += 8; //	"tango://" length
     string::size_type end = fqdn_attr_name.find('/', start);
     return fqdn_attr_name.substr(start, end - start);
 }
@@ -198,9 +204,10 @@ string AttributeName::get_full_attribute_name(const string &fqdn_attr_name)
     string::size_type start = fqdn_attr_name.find("tango://");
 
     if (start == string::npos)
-        return fqdn_attr_name;
+        start = 0;
+    else
+        start = 8; // tango:// len
 
-    start += 8; //	"tango://" length
     start = fqdn_attr_name.find('/', start);
     start++;
     return fqdn_attr_name.substr(start);

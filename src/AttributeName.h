@@ -27,7 +27,7 @@ namespace HDBPP
 {
 /**
  * @class AttributeName
- * @ingroup HDB++ Implementation
+ * @ingroup HDBPP-Implementation
  * @brief Represents a fully qualified domain attribute name in libhdbpp-cassandra.
  *
  * The AttributeName class must be primed with a valid fully qualified domain

@@ -1,54 +1,64 @@
+TARGET  = libhdb++cassandra
+
+##############################################
+# setup paths
+#
+
 LIBHDBPP_DIR ?= .libhdbpp
 LIBHDBPP_INC ?= $(LIBHDBPP_DIR)/src
 
 CASS_CPP_DRIVER_DIR ?= ../../cassandra/cppDriver/cpp-driver
 LIBUV_ROOT_DIR ?= ../../cassandra/cppDriver/cpp-driver/lib/libuv
 
-DBIMPL_INC := ${CASS_CPP_DRIVER_DIR}/include
-DBIMPL_LIB = -L${LIBUV_ROOT_DIR}/lib \
-             -L${CASS_CPP_DRIVER_DIR}/lib \
-             -lcassandra -luv
-
+CASSANDRA_INC := ${CASS_CPP_DRIVER_DIR}/include
 TANGO_INC := ${TANGO_DIR}/include/tango
 OMNIORB_INC := ${OMNIORB_DIR}/include
 ZMQ_INC :=  ${ZMQ_DIR}/include
 
-INC_DIR = -I${TANGO_INC} -I${OMNIORB_INC} -I${ZMQ_INC}
-CXXFLAGS += -std=gnu++0x -Wall -DRELEASE='"$HeadURL$ "' -I$(DBIMPL_INC) $(INC_DIR) -I$(LIBHDBPP_INC)  -fPIC
+INCLUDE_PATH = -Isrc -I${TANGO_INC} -I${OMNIORB_INC} -I${ZMQ_INC} -I${CASSANDRA_INC} -I${LIBHDBPP_INC}
 
-TANGO_LIB = ${TANGO_DIR}/lib
-OMNIORB_LIB = ${OMNIORB_DIR}/lib
+TANGO_LIB = -L${TANGO_DIR}/lib -ltango -llog4tango
+OMNIORB_LIB = -L${OMNIORB_DIR}/lib -lomniORB4 -lomniDynamic4 -lCOS4 -lomnithread 
+ZMQ_LIB =  -L${ZMQ_DIR}/lib -lzmq
+CASSANDRA_LIB = -L${CASS_CPP_DRIVER_DIR}/lib -lcassandra 
+LIBUV_LIB = -L${LIBUV_ROOT_DIR}/lib -luv
 
-TARGET  = libhdb++cassandra
-
-SOURCES = src/LibHdb++Cassandra.cpp src/AttributeName.cpp
-HEADERS = src/LibHdb++Cassandra.h src/AttributeName.h Log.h
+SOURCES = src/LibHdb++Cassandra.cpp src/TangoEventDataBinder.cpp src/AttributeName.cpp
+HEADERS = src/LibHdb++Cassandra.h src/TangoEventDataBinder.h src/AttributeName.h Log.h
 OBJECTS = $(patsubst src%,obj%,$(SOURCES:.cpp=.o))
+
+UNIT_TESTS_SOURCE = test/LibHdb++Cassandra-Tests.cpp
+UNIT_TESTS_OBJECTS = $(patsubst test%,test%,$(UNIT_TESTS_SOURCE:.cpp=.o))
+
+##############################################
+# compile and link options
+#
+CXXFLAGS += -std=gnu++0x -Wall -DRELEASE='"$HeadURL$ "'
 
 ##############################################
 # support for shared libray versioning
 #
-LFLAGS_SONAME = $(DBIMPL_LIB) -Wl,-soname,
-SHLDFLAGS = -shared
-BASELIBNAME =  $(TARGET)
-SHLIB_SUFFIX = so
+LFLAGS_SONAME   = ${LIBUV_LIB} ${CASSANDRA_LIB} -Wl,-soname,
+SHLDFLAGS       = -shared
+BASELIBNAME     = $(TARGET)
+SHLIB_SUFFIX    = so
 
 #  release numbers for libraries
 #
- LIBVERSION    = 7
- LIBRELEASE    = 0
- LIBSUBRELEASE = 0
+ LIBVERSION     = 7
+ LIBRELEASE     = 0
+ LIBSUBRELEASE  = 0
 #
 
-LIBRARY       = $(BASELIBNAME).a
-DT_SONAME     = $(BASELIBNAME).$(SHLIB_SUFFIX).$(LIBVERSION)
-DT_SHLIB      = $(BASELIBNAME).$(SHLIB_SUFFIX).$(LIBVERSION).$(LIBRELEASE).$(LIBSUBRELEASE)
-SHLIB         = $(BASELIBNAME).$(SHLIB_SUFFIX)
+STATIC_LIBRARY  = $(BASELIBNAME).a
+DT_SONAME       = $(BASELIBNAME).$(SHLIB_SUFFIX).$(LIBVERSION)
+DT_SHLIB        = $(BASELIBNAME).$(SHLIB_SUFFIX).$(LIBVERSION).$(LIBRELEASE).$(LIBSUBRELEASE)
+SHLIB           = $(BASELIBNAME).$(SHLIB_SUFFIX)
 
 ##############################################
-# targets
+# Library targets
 
-.PHONY : clean install
+.PHONY : clean install 
 
 all: $(TARGET)
 
@@ -56,31 +66,72 @@ $(TARGET): lib obj $(OBJECTS)
 	$(CXX) $(OBJECTS) $(SHLDFLAGS) $(LFLAGS_SONAME)$(DT_SONAME) -o lib/$(DT_SHLIB)
 	ln -sf $(DT_SHLIB) lib/$(SHLIB)
 	ln -sf $(SHLIB) lib/$(DT_SONAME)
-	ar rcs lib/$(LIBRARY) obj/LibHdb++Cassandra.o
+	ar rcs lib/$(STATIC_LIBRARY) ${OBJECTS}
 
 obj/%.o: src/%.cpp 
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -fPIC $(INCLUDE_PATH) -c $< -o $@
 
-#tests: bin/libhdbpp-cassandra-tests
+##############################################
+# Unit test targets
 
-#obj/libhdbpp-cassandra-tests.o: test/LibHdb++Cassandra-Tests.cpp
-#	$(CXX) $(CXXFLAGS) -ggdb3 -Isrc -c -o $@ $<
+UNIT_TEST_TARGET = unit-tests
 
-#obj/Test_updateTTL_Attr.o: test/Test_updateTTL_Attr.cpp src/LibHdb++Cassandra.h
-#	$(CXX) $(CXXFLAGS) -ggdb3 -Isrc -c -o $@ $<
+tests: test bin/${UNIT_TEST_TARGET}
 
-#bin/libhdbpp-cassandra-tests: bin obj/libhdbpp-cassandra-tests.o
-#	$(CXX) $(CXXFLAGS) -ggdb3 obj/libhdbpp-cassandra-tests.o -o $@ $(LDFLAGS) \
-#	$(DBIMPL_LIB) -Llib -lhdb++cassandra -L${TANGO_LIB} -L${OMNIORB_LIB} \
-#	-L/usr/local/lib -ltango -llog4tango -lomniORB4 -lomniDynamic4 \
-#	-lCOS4 -lomnithread -lzmq -Wl,-rpath=$(PWD)/lib
+bin/${UNIT_TEST_TARGET}: bin ${UNIT_TESTS_OBJECTS}
+	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) ${UNIT_TESTS_OBJECTS} -o $@ $(LDFLAGS) \
+	${TANGO_LIB} ${OMNIORB_LIB} ${ZMQ_LIB} ${LIBUV_LIB} ${CASSANDRA_LIB} \
+	lib/$(STATIC_LIBRARY) -Wl,-rpath=$(PWD)/lib
+
+test/%.o: test/%.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@
+
+clean-tests:
+	@rm -f ${UNIT_TESTS_OBJECTS}
+	@rm -f bin/${UNIT_TEST_TARGET}
+
+run-tests: tests
+	@./bin/${UNIT_TEST_TARGET}
+
+test:
+	@mkdir $@
+
+##############################################
+# Documentation
+
+docs: doc
+	@doxygen .doxygen-config
+
+##############################################
+# Other targets
 
 clean:
-	rm -f obj/*.o lib/*.so* lib/*.a bin/*
+	@rm -f obj/*.o lib/*.so* lib/*.a bin/*
 
 lib:
 	@mkdir $@
+
 obj:
 	@mkdir $@
+
 bin:
 	@mkdir $@
+
+doc: 
+	@mkdir $@
+
+
+ifdef LIBHDBPPCASSANDRA_INSTALL_DIR
+install:
+	@echo "Install to $(LIBHDBPPCASSANDRA_INSTALL_DIR)"
+	install -d $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -d $(LIBHDBPPCASSANDRA_INSTALL_DIR)/include
+	install -m 644 lib/libhdb++cassandra.so $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -m 644 lib/libhdb++cassandra.so.7 $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -m 644 lib/libhdb++cassandra.so.7.0.0 $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -m 644 lib/libhdb++cassandra.a $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -m 644 src/LibHdb++Cassandra.h $(LIBHDBPPCASSANDRA_INSTALL_DIR)/include
+else
+install:
+	echo "No target defined by LIBHDBPPCASSANDRA_INSTALL_DIR, doing nothing"
+endif
