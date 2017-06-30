@@ -187,7 +187,7 @@ public:
     * history event if the given event parameter is DB_START and if the last history event
     * stored was also a START event.
     *
-    * @param fqdn_attr_name Fully qualified attribute nam
+    * @param fqdn_attr_name Fully qualified attribute name
     * @param event
     * @throw Tango::DevFailed
     */

@@ -107,77 +107,77 @@ const string &AttributeName::fetch_domain_family_member_name(string &item)
 
 //=============================================================================
 //=============================================================================
-AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const string &fqdn_attr_name)
+AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const string &full_attr_name )
 {
-    string::size_type first_slash = fqdn_attr_name.find("/");
+    string::size_type first_slash = full_attr_name.find("/");
 
     if (first_slash == string::npos)
     {
-        LOG(Error) << "(" << fqdn_attr_name << "): Error: there is no slash in attribute name" << endl;
+        LOG(Error) << "(" << full_attr_name << "): Error: there is no slash in attribute name" << endl;
         return AttrNameErrors::NoSlashInAttribute;
     }
 
-    string::size_type second_slash = fqdn_attr_name.find("/", first_slash + 1);
+    string::size_type second_slash = full_attr_name.find("/", first_slash + 1);
 
     if (second_slash == string::npos)
     {
-        LOG(Error) << "(" << fqdn_attr_name << "): Error: there is only one slash in attribute name"
+        LOG(Error) << "(" << full_attr_name << "): Error: there is only one slash in attribute name"
                    << endl;
 
         return AttrNameErrors::OnlyOneSlashInAttribute;
     }
 
-    string::size_type third_slash = fqdn_attr_name.find("/", second_slash + 1);
+    string::size_type third_slash = full_attr_name.find("/", second_slash + 1);
 
     if (third_slash == string::npos)
     {
-        LOG(Error) << "(" << fqdn_attr_name
+        LOG(Error) << "(" << full_attr_name
                    << "): Error: there are only two slashes in attribute name" << endl;
 
         return AttrNameErrors::OnlyTwoSlashesInAttribute;
     }
 
-    string::size_type last_slash = fqdn_attr_name.rfind("/");
+    string::size_type last_slash = full_attr_name.rfind("/");
 
     if (last_slash != third_slash)
     {
         // Too many slashes provided!
-        LOG(Error) << "(" << fqdn_attr_name << "): Too many slashes provided in attribute name" << endl;
+        LOG(Error) << "(" << full_attr_name << "): Too many slashes provided in attribute name" << endl;
         return AttrNameErrors::TooManySlashesInAttribute;
     }
 
     if (first_slash == 0)
     {
         // empty domain
-        LOG(Error) << "(" << fqdn_attr_name << "): empty domain" << endl;
+        LOG(Error) << "(" << full_attr_name << "): empty domain" << endl;
         return AttrNameErrors::EmptyDomainInAttribute;
     }
 
     if (second_slash - first_slash - 1 == 0)
     {
         // empty family
-        LOG(Error) << "(" << fqdn_attr_name << "): empty family" << endl;
+        LOG(Error) << "(" << full_attr_name << "): empty family" << endl;
         return AttrNameErrors::EmptyFamilyInAttribute;
     }
 
     if (third_slash - second_slash - 1 == 0)
     {
         // empty member
-        LOG(Error) << "(" << fqdn_attr_name << "): empty member" << endl;
+        LOG(Error) << "(" << full_attr_name << "): empty member" << endl;
         return AttrNameErrors::EmptyMemberInAttribute;
     }
 
-    if (third_slash + 1 == fqdn_attr_name.length())
+    if (third_slash + 1 == full_attr_name.length())
     {
         // empty atribute name
-        LOG(Error) << "(" << fqdn_attr_name << "): empty attribute name" << endl;
+        LOG(Error) << "(" << full_attr_name << "): empty attribute name" << endl;
         return AttrNameErrors::EmptyNameInAttribute;
     }
 
-    _domain_cache = fqdn_attr_name.substr(0, first_slash);
-    _family_cache = fqdn_attr_name.substr(first_slash + 1, second_slash - first_slash - 1);
-    _member_cache = fqdn_attr_name.substr(second_slash + 1, third_slash - second_slash - 1);
-    _attribute_name_cache = fqdn_attr_name.substr(third_slash + 1);
+    _domain_cache = full_attr_name.substr(0, first_slash);
+    _family_cache = full_attr_name.substr(first_slash + 1, second_slash - first_slash - 1);
+    _member_cache = full_attr_name.substr(second_slash + 1, third_slash - second_slash - 1);
+    _attribute_name_cache = full_attr_name.substr(third_slash + 1);
 
     return AttrNameErrors::NoError;
 }

@@ -23,8 +23,8 @@ ZMQ_LIB =  -L${ZMQ_DIR}/lib -lzmq
 CASSANDRA_LIB = -L${CASS_CPP_DRIVER_DIR}/lib -lcassandra 
 LIBUV_LIB = -L${LIBUV_ROOT_DIR}/lib -luv
 
-SOURCES = src/LibHdb++Cassandra.cpp src/TangoEventDataBinder.cpp src/AttributeName.cpp
-HEADERS = src/LibHdb++Cassandra.h src/TangoEventDataBinder.h src/AttributeName.h Log.h
+SOURCES = src/LibHdb++Cassandra.cpp src/AttributeName.cpp
+HEADERS = src/LibHdb++Cassandra.h src/AttributeName.h Log.h
 OBJECTS = $(patsubst src%,obj%,$(SOURCES:.cpp=.o))
 
 UNIT_TESTS_SOURCE = test/LibHdb++Cassandra-Tests.cpp
@@ -47,7 +47,7 @@ SHLIB_SUFFIX    = so
 #
  LIBVERSION     = 7
  LIBRELEASE     = 0
- LIBSUBRELEASE  = 0
+ LIBSUBRELEASE  = 1
 #
 
 STATIC_LIBRARY  = $(BASELIBNAME).a
@@ -127,8 +127,8 @@ install:
 	install -d $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
 	install -d $(LIBHDBPPCASSANDRA_INSTALL_DIR)/include
 	install -m 644 lib/libhdb++cassandra.so $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
-	install -m 644 lib/libhdb++cassandra.so.7 $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
-	install -m 644 lib/libhdb++cassandra.so.7.0.0 $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -m 644 lib/libhdb++cassandra.so.${LIBVERSION} $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
+	install -m 644 lib/libhdb++cassandra.so.${LIBVERSION}.${LIBRELEASE}.${LIBSUBRELEASE} $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
 	install -m 644 lib/libhdb++cassandra.a $(LIBHDBPPCASSANDRA_INSTALL_DIR)/lib
 	install -m 644 src/LibHdb++Cassandra.h $(LIBHDBPPCASSANDRA_INSTALL_DIR)/include
 else

@@ -2397,7 +2397,7 @@ void HdbPPCassandra::set_cassandra_logging_level(string level)
         LOG(Error) << "Log level set by default to: DISABLED" << endl;
     }
 
-    LOG(Debug) << "Cassandra driver logging to to: ";
+    LOG(Debug) << "Cassandra driver logging set to: ";
 
     if (cassandra_logging_level == CASS_LOG_DISABLED)
     {
