@@ -107,7 +107,7 @@ const string &AttributeName::fetch_domain_family_member_name(string &item)
 
 //=============================================================================
 //=============================================================================
-AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const string &full_attr_name )
+AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const string &full_attr_name)
 {
     string::size_type first_slash = full_attr_name.find("/");
 

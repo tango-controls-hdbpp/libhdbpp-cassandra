@@ -23,11 +23,22 @@ ZMQ_LIB =  -L${ZMQ_DIR}/lib -lzmq
 CASSANDRA_LIB = -L${CASS_CPP_DRIVER_DIR}/lib -lcassandra 
 LIBUV_LIB = -L${LIBUV_ROOT_DIR}/lib -luv
 
-SOURCES = src/LibHdb++Cassandra.cpp src/AttributeName.cpp
-HEADERS = src/LibHdb++Cassandra.h src/AttributeName.h Log.h
-OBJECTS = $(patsubst src%,obj%,$(SOURCES:.cpp=.o))
+SOURCES = src/LibHdb++Cassandra.cpp \
+		  src/TangoEventDataBinder.cpp \
+		  src/AttributeName.cpp \
+		  src/PreparedStatementCache.cpp
 
-UNIT_TESTS_SOURCE = test/LibHdb++Cassandra-Tests.cpp
+HEADERS = src/LibHdb++Cassandra.h \
+		  src/TangoEventDataBinder.h \
+		  src/AttributeName.h \
+		  src/PreparedStatementCache.h \
+		  Log.h
+
+UNIT_TESTS_SOURCE = test/main.cpp \
+					test/AttributeNameTests.cpp \
+					test/PreparedStatementCacheTests.cpp
+
+OBJECTS = $(patsubst src%,obj%,$(SOURCES:.cpp=.o))	
 UNIT_TESTS_OBJECTS = $(patsubst test%,test%,$(UNIT_TESTS_SOURCE:.cpp=.o))
 
 ##############################################

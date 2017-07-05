@@ -21,15 +21,15 @@
 #define _HDBPP_LOG_H
 
 #include <chrono>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
 namespace HDBPP
 {
-/** 
+/**
  * @enum LoggingLevel
  * \brief Possible logging levels for the Log class
  *
@@ -37,14 +37,14 @@ namespace HDBPP
  * to quick deference a vector inside the logging class to find the string
  * value of each level
  */
-enum LoggingLevel 
-{ 
+enum LoggingLevel
+{
     Disabled = 0, /// Disable all logging
     Error = 1, /// Only log messages sent at the Error level
     Warning = 2, /// Only log messages sent at the Error and Warning level
     Debug = 3, /// Only log messages sent at the Debug level and above
     Trace = 4 /// Trace is used for the trace macro to trace function call
- };
+};
 
 /**
  * @class Log
@@ -132,7 +132,6 @@ public:
     }
 
 private:
-
     // flush() actually does the logging. It prefixes some basic time stamp information
     // to the line, just down to the seconds for now.
     void flush()
@@ -143,13 +142,11 @@ private:
         auto now_tm = std::localtime(&now_time_t);
 
         auto tse = now.time_since_epoch();
-        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(tse).count() % 1000;        
+        auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(tse).count() % 1000;
 
         // prefix it to our message, we could add any level of detail here
         // and push the message to multiple sinks
-        std::cout << now_tm->tm_hour << ":" 
-                  << now_tm->tm_min << ":" 
-                  << now_tm->tm_sec << ":"
+        std::cout << now_tm->tm_hour << ":" << now_tm->tm_min << ":" << now_tm->tm_sec << ":"
                   << std::setfill('0') << std::setw(3) << milliseconds << " "
                   << Log::ToString(_at_level) << " " << _str_stream.str();
 
@@ -164,26 +161,26 @@ private:
 };
 
 // This is the main logging macro, we use a macro like this to allow the level,
-// line and function to be prefixed to each line of debug. Also filters out 
+// line and function to be prefixed to each line of debug. Also filters out
 // unnecessary logging level calls.
 #define LOG(level)                                                                                 \
     if (level <= Log::LogLevel())                                                                  \
-        Log(level) << "(" << __func__ << ":" << __LINE__ << ") "
+    Log(level) << "(" << __func__ << ":" << __LINE__ << ") "
 
 // To trace function calls, enable this define, this will produce a lot of
 // additional debug and should be kept turned off by default
-//#define TRACE_FUNCTIONS
+#define TRACE_FUNCTIONS
 
 #ifdef TRACE_FUNCTIONS
-    #define TRACE_ENTER                                                                                \
-        Log(Trace) << "(" < < < __func__ << ":" << __LINE__ << ") "                                    \
-                                        << "Enter" << endl
-    #define TRACE_EXIT                                                                                 \
-        Log(Trace) << "(" << __func__ << ":" << __LINE__ << ") "                                       \
-                << "Exit" << endl
+#define TRACE_ENTER                                                                                \
+    Log(Trace) << "(" << __func__ << ":" << __LINE__ << ") "                                       \
+               << "Enter" << endl
+#define TRACE_EXIT                                                                                 \
+    Log(Trace) << "(" << __func__ << ":" << __LINE__ << ") "                                       \
+               << "Exit" << endl
 #else
-    #define TRACE_ENTER
-    #define TRACE_EXIT
+#define TRACE_ENTER
+#define TRACE_EXIT
 #endif
 
 }; // namespace HDBPP

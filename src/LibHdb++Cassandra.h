@@ -31,6 +31,9 @@
 
 namespace HDBPP
 {
+// forward declears
+class PreparedStatementCache;
+
 /**
  * @class HdbPPCassandra
  * @ingroup HDBPP-Interface
@@ -73,8 +76,16 @@ private:
 
     CassCluster *mp_cluster;
     CassSession *mp_session;
-    string m_keyspace_name;
     CassLogLevel cassandra_logging_level;
+
+    string m_keyspace_name;
+
+    // used to flag up whether the library will store the diagnostic timestamps,
+    // setting to false via the configuration will save database space
+    bool _store_diag_times = false;
+
+    // manage prepared statement objects
+    PreparedStatementCache *_prepared_statements;
 
 public:
     /**
@@ -102,6 +113,7 @@ public:
      *      - local_dc: Datacenter name used for queries with LOCAL consistency
      *        level (e.g. LOCAL_QUORUM). In the current version of this library, all the
      *        statements are executed with LOCAL_QUORUM consistency level.
+     *      - store_diag_time: Either true to store the times or false to omit them.
      * - Debug:
      *     - logging_enabled: Either true to enable command line debug, or false to disable
      *     - cassandra_driver_log_level:  Cassandra logging level, see CassLogLevel in Datastax
@@ -207,107 +219,6 @@ private:
                                              unsigned int &conf_ttl);
 
     bool find_last_event(const CassUuid &ID, string &last_event, AttributeName &attr_name);
-
-    string get_data_type(int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                         int format /*SCALAR, SPECTRUM, ..*/,
-                         int write_type /*READ, READ_WRITE, ..*/) const;
-
-    string get_table_name(int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                          int format /*SCALAR, SPECTRUM, ..*/,
-                          int write_type /*READ, READ_WRITE, ..*/) const;
-
-    string get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                int format /*SCALAR, SPECTRUM, ..*/,
-                                int write_type /*READ, READ_WRITE, ..*/,
-                                int &nbQueryParams,
-                                bool isNull,
-                                unsigned int ttl) const;
-
-    void extract_and_bind_bool(CassStatement *statement,
-                               int &param_index,
-                               int data_format /*SCALAR, SPECTRUM, ..*/,
-                               Tango::EventData *data,
-                               enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_uchar(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_short(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_ushort(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_long(CassStatement *statement,
-                               int &param_index,
-                               int data_format /*SCALAR, SPECTRUM, ..*/,
-                               Tango::EventData *data,
-                               enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_ulong(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_long64(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_ulong64(CassStatement *statement,
-                                  int &param_index,
-                                  int data_format /*SCALAR, SPECTRUM, ..*/,
-                                  Tango::EventData *data,
-                                  enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_float(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_double(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_string(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_state(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_encoded(CassStatement *statement,
-                                  int &param_index,
-                                  int data_format /*SCALAR, SPECTRUM, ..*/,
-                                  Tango::EventData *data,
-                                  enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_rw_values(CassStatement *statement,
-                                    int &param_index,
-                                    int data_type,
-                                    int write_type /*READ, READ_WRITE, ..*/,
-                                    int data_format /*SCALAR, SPECTRUM, ..*/,
-                                    Tango::EventData *data,
-                                    bool isNull);
 
     void insert_history_event(const string &history_event_name, CassUuid att_conf_id);
 

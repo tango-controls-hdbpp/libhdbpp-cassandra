@@ -22,13 +22,13 @@
 
 #include <string>
 
-/** 
+/**
  * @namespace HDBPP
- * @brief HDBPP contains all the various classes required for the libhdbpp-cassandra 
+ * @brief HDBPP contains all the various classes required for the libhdbpp-cassandra
  * shared library
  *
- * The namespace currently contains both the exposed HdbPPCassandra class and a number 
- * of helper classes that break out functionality from HdbPPCassandra. In future it 
+ * The namespace currently contains both the exposed HdbPPCassandra class and a number
+ * of helper classes that break out functionality from HdbPPCassandra. In future it
  * may be the case we hide some of these helper classes inside a inner namespace,
  * to unclutter the HDBPP namespace.
  */
@@ -171,5 +171,7 @@ const std::string EXCEPTION_TYPE_NULL_POINTER = "Null Pointer Error";
 const std::string EXCEPTION_TYPE_ATTR_FORMAT = "Attribute Format Error";
 const std::string EXCEPTION_TYPE_ATTR_CACHE = "Attribute Cache Error";
 const std::string EXCEPTION_TYPE_ATTR_NAME = "Attribute Name Error";
+const std::string EXCEPTION_PREPARED_STATEMENT_ERROR = "Failed To Prepare Statement";
+const std::string EXCEPTION_UNKNOWN_QUERY = "Unknown Query Error";
 } // HDBPP
 #endif

@@ -20,10 +20,10 @@
 #include "LibHdb++Cassandra.h"
 #include "LibHdb++Defines.h"
 #include "Log.h"
+#include "PreparedStatementCache.h"
+#include "TangoEventDataBinder.h"
 
-#include <cassandra.h>
 #include <iostream>
-#include <netdb.h> //for getaddrinfo
 
 #ifndef LIB_BUILDTIME
 #define LIB_BUILDTIME RELEASE " " __DATE__ " " __TIME__
@@ -53,8 +53,8 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     mp_cluster = NULL;
     map<string, string> libhdb_conf;
     string_vector2map(configuration, "=", &libhdb_conf);
-    string contact_points, user, password;
     string local_dc = LOCAL_DC_DEFAULT;
+    string contact_points;
 
     // ---- logging_enabled optional config parameter ----
     try
@@ -118,6 +118,20 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     }
 
     // ---- optional config parameters ----
+    string user;
+    string password;
+
+    try
+    {
+        string store_diag_time_str = libhdb_conf.at("store_diag_time");
+        store_diag_time_str == "true" ? _store_diag_times = true : _store_diag_times = false;
+    }
+    catch (const std::out_of_range &e)
+    {
+        LOG(Debug) << "Library configuration parameter \"store_diag_time\" is not defined. "
+                   << "Using default setting of true." << endl;
+    }
+
     try
     {
         user = libhdb_conf.at("user");
@@ -183,6 +197,10 @@ HdbPPCassandra::~HdbPPCassandra()
 
     if (mp_cluster)
     {
+        // free up any used prepared statements
+        _prepared_statements->free_cache();
+        delete _prepared_statements;
+
         CassFuture *close_future = NULL;
         close_future = cass_session_close(mp_session);
         cass_future_wait(close_future);
@@ -220,6 +238,9 @@ void HdbPPCassandra::connect_session()
     {
         LOG(Debug) << "Cassandra connection OK" << endl;
     }
+
+    // create a prepared statement manager
+    _prepared_statements = new PreparedStatementCache(mp_session, m_keyspace_name);
 
     TRACE_EXIT;
 }
@@ -290,16 +311,12 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
 {
     TRACE_ENTER;
 
-    ostringstream query_str;
-
-    query_str << "SELECT " << CONF_COL_ID << ", " << CONF_COL_TTL << " FROM " << m_keyspace_name
-              << "." << CONF_TABLE_NAME << " WHERE " << CONF_COL_NAME << " = ? AND "
-              << CONF_COL_FACILITY << " = ?" << ends;
-
-    CassStatement *statement = cass_statement_new(query_str.str().c_str(), 2);
+    CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdAndTtlInDb);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_string(statement, 0, attr_name.full_attribute_name().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
+                                       attr_name.full_attribute_name().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
 
     CassFuture *future = cass_session_execute(mp_session, statement);
     cass_future_wait(future);
@@ -309,7 +326,10 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
     {
         cass_future_free(future);
         cass_statement_free(statement);
-        throw_execute_exception("ERROR executing select query", query_str.str(), rc, __func__);
+
+        throw_execute_exception(EXCEPTION_TYPE_QUERY,
+                                _prepared_statements->query_string(Query::FindAttrIdAndTtlInDb), rc,
+                                __func__);
     }
 
     const CassResult *result = cass_future_get_result(future);
@@ -318,9 +338,10 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
 
     if (cass_iterator_next(iterator))
     {
-        LOG(Debug) << "SUCCESS in query: " << query_str.str() << "(" << CONF_COL_NAME << "=\'"
-                   << attr_name.full_attribute_name() << "\'," << CONF_COL_FACILITY << "=\'"
-                   << attr_name.tango_host_with_domain() << "\')" << endl;
+        LOG(Debug) << "SUCCESS in query: "
+                   << _prepared_statements->query_id_to_str(Query::FindAttrIdAndTtlInDb) << " ("
+                   << CONF_COL_NAME << "=\'" << attr_name.full_attribute_name() << "\',"
+                   << CONF_COL_FACILITY << "=\'" << attr_name.tango_host_with_domain() << "\')" << endl;
 
         const CassRow *row = cass_iterator_get_row(iterator);
         cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
@@ -400,7 +421,8 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
     cass_statement_free(statement);
 
     if (!found)
-        LOG(Debug) << "(" << attr_name << "): NO RESULT in query: " << query_str.str() << endl;
+        LOG(Debug) << "(" << attr_name << "): NO RESULT in query: "
+                   << _prepared_statements->query_id_to_str(Query::FindAttrIdAndTtlInDb) << endl;
 
     TRACE_EXIT;
     return found;
@@ -415,20 +437,12 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
 {
     TRACE_ENTER;
 
-    ostringstream query_str;
-
-    query_str << "SELECT " << CONF_COL_ID << "," << CONF_COL_TYPE << "," << CONF_COL_TTL << " FROM "
-              << m_keyspace_name << "." << CONF_TABLE_NAME << " WHERE " << CONF_COL_NAME
-              << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
-
-    LOG(Debug) << ": query = " << query_str.str().c_str() << endl;
-    LOG(Debug) << "tango_host with domain = \"" << attr_name.tango_host_with_domain() << "\"" << endl;
-    LOG(Debug) << "attr = \"" << attr_name.full_attribute_name() << "\"" << endl;
-
-    CassStatement *statement = cass_statement_new(query_str.str().c_str(), 2);
+    CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdTypeAndTtlInDb);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_string(statement, 0, attr_name.full_attribute_name().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
+                                       attr_name.full_attribute_name().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
 
     CassFuture *future = cass_session_execute(mp_session, statement);
     cass_future_wait(future);
@@ -438,7 +452,9 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
     {
         cass_future_free(future);
         cass_statement_free(statement);
-        throw_execute_exception(EXCEPTION_TYPE_QUERY, query_str.str(), rc, __func__);
+        throw_execute_exception(EXCEPTION_TYPE_QUERY,
+                                _prepared_statements->query_string(Query::FindAttrIdTypeAndTtlInDb),
+                                rc, __func__);
     }
 
     const CassResult *result = cass_future_get_result(future);
@@ -448,7 +464,8 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
 
     if (cass_iterator_next(iterator))
     {
-        LOG(Debug) << "SUCCESS in query: " << query_str.str() << endl;
+        LOG(Debug) << "SUCCESS in query: "
+                   << _prepared_statements->query_id_to_str(Query::FindAttrIdTypeAndTtlInDb) << endl;
 
         // TODO Improve error handling
         const CassRow *row = cass_iterator_get_row(iterator);
@@ -474,7 +491,8 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
 
     if (!found)
     {
-        LOG(Debug) << "NO RESULT in query: " << query_str.str() << endl;
+        LOG(Warning) << "NO RESULT in query: "
+                     << _prepared_statements->query_id_to_str(Query::FindAttrIdTypeAndTtlInDb) << endl;
         TRACE_EXIT;
         return AttrNotFound;
     }
@@ -498,868 +516,16 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
 
 //=============================================================================
 //=============================================================================
-void HdbPPCassandra::extract_and_bind_bool(CassStatement *statement,
-                                           int &param_index,
-                                           int data_format /*SCALAR, SPECTRUM, ..*/,
-                                           Tango::EventData *data,
-                                           enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<bool> vbool;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(vbool);
-    else
-        extract_success = data->attr_value->extract_set(vbool);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_bool(statement, param_index, vbool[0] ? cass_true : cass_false);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, vbool.size());
-            for (unsigned int i = 0; i < vbool.size(); i++)
-            {
-                cass_collection_append_bool(read_values_list, vbool[i] ? cass_true : cass_false);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_uchar(CassStatement *statement,
-                                            int &param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<unsigned char> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int32(statement, param_index, val[0] & 0xFF);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int32(read_values_list, val[i] & 0xFF);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_short(CassStatement *statement,
-                                            int &param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<short> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int32(statement, param_index, val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int32(read_values_list, val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_ushort(CassStatement *statement,
-                                             int &param_index,
-                                             int data_format /*SCALAR, SPECTRUM, ..*/,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<unsigned short> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int32(statement, param_index, val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int32(read_values_list, val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_long(CassStatement *statement,
-                                           int &param_index,
-                                           int data_format /*SCALAR, SPECTRUM, ..*/,
-                                           Tango::EventData *data,
-                                           enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<int> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int32(statement, param_index, val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int32(read_values_list, val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_ulong(CassStatement *statement,
-                                            int &param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<unsigned int> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int64(statement, param_index, val[0]); // TODO? Bind to int32?
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int64(read_values_list, val[i]); // TODO? Bind to int32?
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_long64(CassStatement *statement,
-                                             int &param_index,
-                                             int data_format /*SCALAR, SPECTRUM, ..*/,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<int64_t> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int64(statement, param_index, val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int64(read_values_list, val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_ulong64(CassStatement *statement,
-                                              int &param_index,
-                                              int data_format /*SCALAR, SPECTRUM, ..*/,
-                                              Tango::EventData *data,
-                                              enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<uint64_t> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int64(statement, param_index, val[0]); // TODO? Test extreme values!
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int64(read_values_list,
-                                             val[i]); // TODO? Test extreme values!
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_string(CassStatement *statement,
-                                             int &param_index,
-                                             int data_format /*SCALAR, SPECTRUM, ..*/,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<string> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_string(statement, param_index, val[0].c_str());
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_string(read_values_list, val[i].c_str());
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_state(CassStatement *statement,
-                                            int &param_index,
-                                            int data_format /*SCALAR, SPECTRUM, ..*/,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<Tango::DevState> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            // We cannot use the extract_read() method for the "State" attribute
-            Tango::DevState st;
-            *data->attr_value >> st;
-            cass_statement_bind_int32(statement, param_index, (int8_t)st);
-            return;
-        }
-        // ARRAY case:
-        extract_success = data->attr_value->extract_read(val);
-    }
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            cass_statement_bind_int32(statement, param_index, (int8_t)val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                cass_collection_append_int32(read_values_list, (int8_t)val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list);
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_encoded(CassStatement *statement,
-                                              int &param_index,
-                                              int data_format /*SCALAR, SPECTRUM, ..*/,
-                                              Tango::EventData *data,
-                                              enum extract_t extract_type)
-{
-    TRACE_ENTER;
-
-    // TODO: Not yet supported
-    LOG(Error) << "DevEncoded type is not yet supported..." << endl;
-    // 	vector<Tango::DevEncoded> val;
-    // 	bool extract_success = false;
-    //
-    // 	if(extract_type == EXTRACT_READ)
-    // 		extract_success = data->attr_value->extract_read(val);
-    // 	else
-    // 		extract_success = data->attr_value->extract_set(val);
-    //
-    // 	if(extract_success)
-    // 	{
-    // 		if(data_format == Tango::SCALAR)
-    // 		{
-    // 			cass_statement_bind_int32(statement, param_index, val[0]);
-    // 		}
-    // 		else
-    // 		{
-    // 			LOG(Debug)<< ": DevEncoded type is not yet supported..." << endl;
-    // 			// Store the array into a CQL list
-    // 			CassCollection* readValuesList = NULL;
-    // 			readValuesList = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-    // 			for(unsigned int i = 0; i < val.size(); i++)
-    // 			{
-    // 			  cass_collection_append_int32(readValuesList, (int8_t)val[i]);
-    // 			}
-    // 			cass_statement_bind_collection(statement, param_index, readValuesList);
-    // 			cass_collection_free(readValuesList);
-    // 		}
-    // 	}
-    // 	else
-    // 	{
-    // 		cass_statement_bind_null(statement,param_index);
-    // 	}
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_float(CassStatement *statement,
-                                            int &param_index,
-                                            int data_format /* Tango::SCALAR, ... */,
-                                            Tango::EventData *data,
-                                            enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<float> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            if (std::isnan(val[0]))
-                cass_statement_bind_float(statement, param_index, std::numeric_limits<float>::quiet_NaN());
-            else if (std::isinf(val[0]))
-                cass_statement_bind_float(statement, param_index, std::numeric_limits<float>::infinity());
-            else
-                cass_statement_bind_float(statement, param_index, val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                if (std::isnan(val[i]))
-                    cass_collection_append_float(read_values_list,
-                                                 std::numeric_limits<float>::quiet_NaN());
-                else if (std::isinf(val[i]))
-                    cass_collection_append_float(read_values_list, std::numeric_limits<float>::infinity());
-                else
-                    cass_collection_append_float(read_values_list, val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list); // value_r
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_double(CassStatement *statement,
-                                             int &param_index,
-                                             int data_format /* Tango::SCALAR, ... */,
-                                             Tango::EventData *data,
-                                             enum extract_t extract_type)
-{
-    TRACE_ENTER;
-    vector<double> val;
-    bool extract_success = false;
-
-    if (extract_type == EXTRACT_READ)
-        extract_success = data->attr_value->extract_read(val);
-    else
-        extract_success = data->attr_value->extract_set(val);
-
-    if (extract_success)
-    {
-        if (data_format == Tango::SCALAR)
-        {
-            if (std::isnan(val[0]))
-                cass_statement_bind_double(statement, param_index,
-                                           std::numeric_limits<double>::quiet_NaN());
-            else if (std::isinf(val[0]))
-                cass_statement_bind_double(statement, param_index,
-                                           std::numeric_limits<double>::infinity());
-            else
-                cass_statement_bind_double(statement, param_index, val[0]);
-        }
-        else
-        {
-            // Store the array into a CQL list
-            CassCollection *read_values_list = NULL;
-            read_values_list = cass_collection_new(CASS_COLLECTION_TYPE_LIST, val.size());
-            for (unsigned int i = 0; i < val.size(); i++)
-            {
-                if (std::isnan(val[i]))
-                    cass_collection_append_double(read_values_list,
-                                                  std::numeric_limits<double>::quiet_NaN());
-                else if (std::isinf(val[i]))
-                    cass_collection_append_double(read_values_list,
-                                                  std::numeric_limits<double>::infinity());
-                else
-                    cass_collection_append_double(read_values_list, val[i]);
-            }
-            cass_statement_bind_collection(statement, param_index, read_values_list); // value_r
-            cass_collection_free(read_values_list);
-        }
-    }
-    else
-    {
-        cass_statement_bind_null(statement, param_index);
-        stringstream error_desc;
-
-        error_desc << "Failed to extract the attribute " << data->attr_name
-                   << " from the Tango EventData. Possible type mismatch?" << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_EXTRACT, error_desc.str(), __func__);
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::extract_and_bind_rw_values(CassStatement *statement,
-                                                int &param_index,
-                                                int data_type,
-                                                int write_type /*READ, READ_WRITE, ..*/,
-                                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                                Tango::EventData *data,
-                                                bool isNull)
-{
-    TRACE_ENTER;
-
-    if (write_type != Tango::WRITE)
-    {
-        if (isNull)
-        {
-            // There is no value to bind.
-            // This is to avoid storing NULL values into Cassandra (<=> tombstones)
-            TRACE_EXIT;
-            return;
-        }
-        else
-        {
-            // There is a read value
-            switch (data_type)
-            {
-                case Tango::DEV_BOOLEAN:
-                    extract_and_bind_bool(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_UCHAR:
-                    extract_and_bind_uchar(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_SHORT:
-                    extract_and_bind_short(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_USHORT:
-                    extract_and_bind_ushort(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_LONG:
-                    extract_and_bind_long(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_ULONG:
-                    extract_and_bind_ulong(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_LONG64:
-                    extract_and_bind_long64(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_ULONG64:
-                    extract_and_bind_ulong64(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_FLOAT:
-                    extract_and_bind_float(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_DOUBLE:
-                    extract_and_bind_double(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_STRING:
-                    extract_and_bind_string(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_STATE:
-                    extract_and_bind_state(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                case Tango::DEV_ENCODED:
-                    extract_and_bind_encoded(statement, param_index, data_format, data, EXTRACT_READ);
-                    break;
-                default:
-                {
-                    stringstream error_desc;
-
-                    error_desc << "Attribute " << data->attr_name << " type (" << (int)(data_type)
-                               << ")) not supported" << ends;
-
-                    LOG(Error) << error_desc.str() << endl;
-                    Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR,
-                                                   error_desc.str(), __func__);
-                }
-            } // switch(data_type)
-        }
-        param_index++;
-    }
-
-    if (write_type != Tango::READ)
-    {
-        if (isNull)
-        {
-            // There is no value to bind.
-            // This is to avoid storing NULL values into Cassandra (<=> tombstones)
-            TRACE_EXIT;
-            return;
-        }
-        else
-        {
-            // There is a write value
-            switch (data_type)
-            {
-                case Tango::DEV_BOOLEAN:
-                    extract_and_bind_bool(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_UCHAR:
-                    extract_and_bind_uchar(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_SHORT:
-                    extract_and_bind_short(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_USHORT:
-                    extract_and_bind_ushort(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_LONG:
-                    extract_and_bind_long(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_ULONG:
-                    extract_and_bind_ulong(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_LONG64:
-                    extract_and_bind_long64(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_ULONG64:
-                    extract_and_bind_ulong64(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_FLOAT:
-                    extract_and_bind_float(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_DOUBLE:
-                    extract_and_bind_double(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_STRING:
-                    extract_and_bind_string(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_STATE:
-                    extract_and_bind_state(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                case Tango::DEV_ENCODED:
-                    extract_and_bind_encoded(statement, param_index, data_format, data, EXTRACT_SET);
-                    break;
-                default:
-                {
-                    stringstream error_desc;
-                    error_desc << "Attribute " << data->attr_name << " type (" << (int)(data_type)
-                               << ")) not supported" << ends;
-
-                    LOG(Error) << error_desc.str() << endl;
-                    Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR,
-                                                   error_desc.str(), __func__);
-                }
-            } // switch(data_type)
-        }
-        param_index++;
-    }
-
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
 bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, AttributeName &attr_name)
 {
     TRACE_ENTER;
-    ostringstream query_str;
     last_event = "??";
 
-    query_str << "SELECT " << HISTORY_COL_EVENT << " FROM " << m_keyspace_name << "."
-              << HISTORY_TABLE_NAME << " WHERE " << HISTORY_COL_ID << " = ?"
-              << " ORDER BY " << HISTORY_COL_TIME << " DESC LIMIT 1" << ends;
-
-    CassStatement *statement = cass_statement_new(query_str.str().c_str(), 1);
+    CassStatement *statement = _prepared_statements->statement(Query::FindLastEvent);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
-    cass_statement_bind_uuid(statement, 0, id); // att_conf_id
+                                                                              // consistency
+                                                                              // tunable?
+    cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), id);
 
     CassFuture *future = cass_session_execute(mp_session, statement);
     cass_future_wait(future);
@@ -1369,7 +535,8 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
     {
         cass_future_free(future);
         cass_statement_free(statement);
-        throw_execute_exception("ERROR executing select query", query_str.str(), rc, __func__);
+        throw_execute_exception(EXCEPTION_TYPE_QUERY,
+                                _prepared_statements->query_string(Query::FindLastEvent), rc, __func__);
     }
 
     bool found = false;
@@ -1378,7 +545,8 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
 
     if (cass_iterator_next(iterator))
     {
-        LOG(Debug) << "SUCCESS in query: " << query_str.str() << endl;
+        LOG(Debug) << "SUCCESS in query: " << _prepared_statements->query_id_to_str(Query::FindLastEvent)
+                   << endl;
 
         const CassRow *row = cass_iterator_get_row(iterator);
         const char *last_event_res;
@@ -1396,7 +564,8 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
     cass_statement_free(statement);
 
     if (!found)
-        LOG(Debug) << "(" << attr_name << "): NO RESULT in query: " << query_str.str() << endl;
+        LOG(Debug) << "(" << attr_name << "): NO RESULT in query: "
+                   << _prepared_statements->query_id_to_str(Query::FindLastEvent) << endl;
 
     TRACE_EXIT;
     return found;
@@ -1427,13 +596,14 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 
     Tango::AttributeDimension attr_w_dim;
     Tango::AttributeDimension attr_r_dim;
-    int data_type = ev_data_type.data_type; // data->attr_value->get_type()
+    int data_type = ev_data_type.data_type;
     Tango::AttrDataFormat data_format = ev_data_type.data_format;
     int write_type = ev_data_type.write_type;
     // int max_dim_x = ev_data_type.max_dim_x;
     // int max_dim_y = ev_data_type.max_dim_y;
 
     bool is_null = false;
+
     if (data->err)
     {
         LOG(Debug) << "Attribute in error:" << error_desc << endl;
@@ -1457,9 +627,6 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
         LOG(Debug) << "no value will be archived... (Invalid Attribute)" << endl;
         is_null = true;
     }
-
-    LOG(Debug) << "data_type=" << data_type << " data_format=" << data_format
-               << " write_type=" << write_type << endl;
 
     if (!is_null)
     {
@@ -1489,14 +656,9 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
         Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
     }
 
-    int nb_query_params = 0;
-
-    string query_str =
-        get_insert_query_str(data_type, data_format, write_type, nb_query_params, is_null, ttl);
-
-    CassStatement *statement = cass_statement_new(query_str.c_str(), nb_query_params);
+    CassStatement *statement = _prepared_statements->statement(data_type, data_format, write_type);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_uuid(statement, 0, id); // att_conf_id
+    cass_statement_bind_uuid_by_name(statement, SC_COL_ID.c_str(), id);
 
     // Compute the period based on the month of the event time
     struct tm *tms;
@@ -1508,11 +670,15 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     char period[11];
     snprintf(period, 11, "%04d-%02d-%02d", tms->tm_year + 1900, tms->tm_mon + 1, tms->tm_mday);
 
-    cass_statement_bind_string(statement, 1, period); // period
-    cass_statement_bind_int64(statement, 2, ev_time); // event_time
-    cass_statement_bind_int32(statement, 3, ev_time_us); // event_time_us
-    cass_statement_bind_int64(statement, 4, rcv_time); // recv_time
-    cass_statement_bind_int32(statement, 5, rcv_time_us); // recv_time_us
+    cass_statement_bind_string_by_name(statement, SC_COL_PERIOD.c_str(), period);
+    cass_statement_bind_int64_by_name(statement, SC_COL_EV_TIME.c_str(), ev_time);
+    cass_statement_bind_int32_by_name(statement, SC_COL_EV_TIME_US.c_str(), ev_time_us);
+
+    if (_store_diag_times)
+    {
+        cass_statement_bind_int64_by_name(statement, SC_COL_RCV_TIME.c_str(), rcv_time);
+        cass_statement_bind_int32_by_name(statement, SC_COL_RCV_TIME_US.c_str(), rcv_time_us);
+    }
 
     // Get the current time
     struct timespec ts;
@@ -1522,25 +688,40 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
         perror("clock_gettime()");
     }
 
-    int64_t insert_time = ((int64_t)ts.tv_sec) * 1000;
-    int insert_time_us = ts.tv_nsec / 1000;
-    cass_statement_bind_int64(statement, 6, insert_time); // insert_time
-    cass_statement_bind_int32(statement, 7, insert_time_us); // insert_time_us
-    cass_statement_bind_int32(statement, 8, quality); // quality
-    cass_statement_bind_string(statement, 9, error_desc.c_str()); // error description
-    int param_index = 10;
+    if (_store_diag_times)
+    {
+        int64_t insert_time = ((int64_t)ts.tv_sec) * 1000;
+        int insert_time_us = ts.tv_nsec / 1000;
+        cass_statement_bind_int64_by_name(statement, SC_COL_INS_TIME.c_str(), insert_time);
+        cass_statement_bind_int32_by_name(statement, SC_COL_INS_TIME_US.c_str(), insert_time_us);
+    }
 
-    extract_and_bind_rw_values(statement, param_index, data_type, write_type, data_format, data, is_null);
+    cass_statement_bind_int32_by_name(statement, SC_COL_QUALITY.c_str(), quality);
+    cass_statement_bind_string_by_name(statement, SC_COL_ERROR_DESC.c_str(), error_desc.c_str());
 
-    if (ttl != 0)
-        cass_statement_bind_uint32(statement, param_index, ttl * 3600); // TTL
+    TangoEventDataBinder event_binder;
+    event_binder(statement, SC_COL_VALUE_R, data_type, write_type, data_format, data);
+    event_binder(statement, SC_COL_VALUE_W, data_type, write_type, data_format, data);
+
+    if (ttl > 0)
+    {
+        cass_statement_bind_int32(statement,
+                                  _prepared_statements->get_insert_attr_ttl_bind_position(write_type),
+                                  ttl * 3600);
+    }
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", query_str, rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(data_type, data_format, write_type),
+                                rc, __func__);
 
-    LOG(Debug) << "SUCCESS in query: " << query_str << endl;
+    LOG(Debug) << "SUCCESS in query: "
+               << _prepared_statements->query_id_to_str(data_type, data_format, write_type)
+               << " with ttl = " << ttl << " data_type = " << data_type
+               << " data_format = " << data_format << " write_type = " << write_type << endl;
+
     TRACE_EXIT;
 }
 
@@ -1563,26 +744,19 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
     int64_t current_time = ((int64_t)ts.tv_sec) * 1000;
     int current_time_us = ts.tv_nsec / 1000;
 
-    ostringstream insert_event_str;
-
-    insert_event_str << "INSERT INTO " << m_keyspace_name << "." << HISTORY_TABLE_NAME << " ("
-                     << HISTORY_COL_ID << "," << HISTORY_COL_EVENT << "," << HISTORY_COL_TIME << ","
-                     << HISTORY_COL_TIME_US << ")"
-                     << " VALUES ( ?, ?, ?, ?)" << ends;
-
-    CassStatement *statement = cass_statement_new(insert_event_str.str().c_str(), 4);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
-    cass_statement_bind_uuid(statement, 0, att_conf_id);
-    cass_statement_bind_string(statement, 1, history_event_name.c_str());
-    cass_statement_bind_int64(statement, 2, current_time);
-    cass_statement_bind_int32(statement, 3, current_time_us);
+    CassStatement *statement = _prepared_statements->statement(Query::InsertHistoryEvent);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), att_conf_id);
+    cass_statement_bind_string_by_name(statement, HISTORY_COL_EVENT.c_str(), history_event_name.c_str());
+    cass_statement_bind_int64_by_name(statement, HISTORY_COL_TIME.c_str(), current_time);
+    cass_statement_bind_int32_by_name(statement, HISTORY_COL_TIME_US.c_str(), current_time_us);
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", insert_event_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertHistoryEvent), rc,
+                                __func__);
 
     TRACE_EXIT;
 }
@@ -1629,24 +803,9 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
         LOG(Debug) << "ID found for attribute " << attr_name << " = " << uuid_str << endl;
     }
 
-    ostringstream query_str;
-
-    query_str << "INSERT INTO " << m_keyspace_name << "." << PARAM_TABLE_NAME << " (" << PARAM_COL_ID
-              << "," << PARAM_COL_EV_TIME << "," << PARAM_COL_EV_TIME_US << "," << PARAM_COL_INS_TIME
-              << "," << PARAM_COL_INS_TIME_US << "," << PARAM_COL_LABEL << "," << PARAM_COL_UNIT << ","
-              << PARAM_COL_STANDARDUNIT << "," << PARAM_COL_DISPLAYUNIT << "," << PARAM_COL_FORMAT
-              << "," << PARAM_COL_ARCHIVERELCHANGE << "," << PARAM_COL_ARCHIVEABSCHANGE << ","
-              << PARAM_COL_ARCHIVEPERIOD << "," << PARAM_COL_DESCRIPTION << ")";
-
-    query_str << " VALUES (?,?,?,"
-              << "?,?,"
-              << "?,?,?,"
-              << "?,?,?,"
-              << "?,?,?)" << ends;
-
-    CassStatement *statement = cass_statement_new(query_str.str().c_str(), 14);
+    CassStatement *statement = _prepared_statements->statement(Query::InsertParamAttribute);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_uuid(statement, 0, uuid);
+    cass_statement_bind_uuid_by_name(statement, PARAM_COL_ID.c_str(), uuid);
 
     // Get the current time
     struct timespec ts;
@@ -1658,10 +817,10 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
 
     int64_t insert_time = ((int64_t)ts.tv_sec) * 1000;
     int insert_time_us = ts.tv_nsec / 1000;
-    cass_statement_bind_int64(statement, 1, ev_time); // recv_time
-    cass_statement_bind_int32(statement, 2, ev_time_us); // recv_time_us
-    cass_statement_bind_int64(statement, 3, insert_time); // insert_time
-    cass_statement_bind_int32(statement, 4, insert_time_us); // insert_time_us
+    cass_statement_bind_int64_by_name(statement, PARAM_COL_EV_TIME.c_str(), ev_time); // recv_time
+    cass_statement_bind_int32_by_name(statement, PARAM_COL_EV_TIME_US.c_str(), ev_time_us); // recv_time_us
+    cass_statement_bind_int64_by_name(statement, PARAM_COL_INS_TIME.c_str(), insert_time); // insert_time
+    cass_statement_bind_int32_by_name(statement, PARAM_COL_INS_TIME_US.c_str(), insert_time_us); // insert_time_us
 
     LOG(Debug) << " label: \"" << data->attr_conf->label.c_str() << "\"" << endl;
     LOG(Debug) << " unit: \"" << data->attr_conf->unit.c_str() << "\"" << endl;
@@ -1681,32 +840,36 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     LOG(Debug) << " description: \"" << data->attr_conf->description.c_str() << "\"" << endl;
     LOG(Debug) << " after binding description" << endl;
 
-    cass_statement_bind_string(statement, 5, data->attr_conf->label.c_str()); // label
-    cass_statement_bind_string(statement, 6, data->attr_conf->unit.c_str()); // unit
+    cass_statement_bind_string_by_name(statement, PARAM_COL_LABEL.c_str(),
+                                       data->attr_conf->label.c_str()); // label
+    cass_statement_bind_string_by_name(statement, PARAM_COL_UNIT.c_str(), data->attr_conf->unit.c_str()); // unit
 
-    cass_statement_bind_string(statement, 7,
-                               data->attr_conf->standard_unit.c_str()); // standard unit
+    cass_statement_bind_string_by_name(statement, PARAM_COL_STANDARDUNIT.c_str(),
+                                       data->attr_conf->standard_unit.c_str()); // standard unit
 
-    cass_statement_bind_string(statement, 8, data->attr_conf->display_unit.c_str()); // display unit
-    cass_statement_bind_string(statement, 9, data->attr_conf->format.c_str()); // format
+    cass_statement_bind_string_by_name(statement, PARAM_COL_DISPLAYUNIT.c_str(),
+                                       data->attr_conf->display_unit.c_str()); // display unit
+    cass_statement_bind_string_by_name(statement, PARAM_COL_FORMAT.c_str(),
+                                       data->attr_conf->format.c_str()); // format
 
-    cass_statement_bind_string(statement,
-                               10, data->attr_conf->events.arch_event.archive_rel_change.c_str()); // archive relative range
+    cass_statement_bind_string_by_name(statement, PARAM_COL_ARCHIVERELCHANGE.c_str(),
+                                       data->attr_conf->events.arch_event.archive_rel_change.c_str()); // archive relative range
 
-    cass_statement_bind_string(statement,
-                               11, data->attr_conf->events.arch_event.archive_abs_change.c_str()); // archive abs change
+    cass_statement_bind_string_by_name(statement, PARAM_COL_ARCHIVEABSCHANGE.c_str(),
+                                       data->attr_conf->events.arch_event.archive_abs_change.c_str()); // archive abs change
 
-    cass_statement_bind_string(statement, 12, data->attr_conf->events.arch_event.archive_period.c_str()); // archive period
-    cass_statement_bind_string(statement, 13, data->attr_conf->description.c_str()); // description
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable? => would
-    // be useful!
+    cass_statement_bind_string_by_name(statement, PARAM_COL_ARCHIVEPERIOD.c_str(),
+                                       data->attr_conf->events.arch_event.archive_period.c_str()); // archive period
+    cass_statement_bind_string_by_name(statement, PARAM_COL_DESCRIPTION.c_str(),
+                                       data->attr_conf->description.c_str()); // description
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", query_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertParamAttribute), rc,
+                                __func__);
 
     TRACE_EXIT;
 }
@@ -1734,7 +897,8 @@ void HdbPPCassandra::configure_Attr(string name,
     LOG(Debug) << "name=" << name << " -> tango_host=" << attr_name.tango_host_with_domain()
                << " attr_name=" << attr_name << endl;
 
-    string data_type = get_data_type(type, format, write_type);
+    string data_type = _prepared_statements->get_table_name(type, format, write_type);
+
     CassUuid id;
     unsigned int conf_ttl = 0;
     FindAttrResult find_attr_result = find_attr_id_type_and_ttl(attr_name, id, data_type, conf_ttl);
@@ -1803,6 +967,7 @@ void HdbPPCassandra::configure_Attr(string name,
 void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl /* hours, 0=infinity*/)
 {
     TRACE_ENTER;
+    LOG(Debug) << "Update: " << fqdn_attr_name << " TTL with parameter ttl = " << ttl << endl;
 
     AttributeName attr_name(fqdn_attr_name);
     CassUuid uuid;
@@ -1882,70 +1047,6 @@ void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 
 //=============================================================================
 //=============================================================================
-string HdbPPCassandra::get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                            int data_format /* SCALAR, SPECTRUM */,
-                                            int write_type /*READ, READ_WRITE, ..*/,
-                                            int &nbQueryParams,
-                                            bool isNull,
-                                            unsigned int ttl) const
-{
-    TRACE_ENTER;
-
-    string table_name = get_table_name(tango_data_type, data_format, write_type);
-    ostringstream query_str;
-    nbQueryParams = 10;
-
-    query_str << "INSERT INTO " << m_keyspace_name << "." << table_name << " (" << SC_COL_ID << ","
-              << SC_COL_PERIOD << "," << SC_COL_EV_TIME << "," << SC_COL_EV_TIME_US << ","
-              << SC_COL_RCV_TIME << "," << SC_COL_RCV_TIME_US << "," << SC_COL_INS_TIME << ","
-              << SC_COL_INS_TIME_US << "," << SC_COL_QUALITY << "," << SC_COL_ERROR_DESC;
-
-    // TODO: store dim_x, dim_y for spectrum attributes
-
-    // We don't insert the value if the value is null because
-    // it would create an unnecessary tombstone in Cassandra
-    if (!isNull)
-    {
-        if (write_type != Tango::WRITE) // RO or RW
-            query_str << "," << SC_COL_VALUE_R;
-
-        if (write_type != Tango::READ) // RW or WO
-            query_str << "," << SC_COL_VALUE_W;
-    }
-
-    query_str << ") VALUES (?,?,?,?,?,?,?,?,?,?";
-
-    if (!isNull)
-    {
-        if (write_type != Tango::WRITE) // RO or RW
-        {
-            query_str << ",?";
-            nbQueryParams++;
-        }
-        if (write_type != Tango::READ) // RW or WO
-        {
-            query_str << ",?";
-            nbQueryParams++;
-        }
-    }
-
-    query_str << ")";
-
-    if (ttl != 0)
-    {
-        query_str << " USING TTL ?";
-        nbQueryParams++;
-    }
-
-    query_str << ends;
-
-    LOG(Debug) << "Query = \"" << query_str.str() << "\"" << endl;
-    TRACE_EXIT;
-    return query_str.str();
-}
-
-//=============================================================================
-//=============================================================================
 string HdbPPCassandra::remove_domain(string str)
 {
     string::size_type end1 = str.find(".");
@@ -1988,98 +1089,6 @@ void HdbPPCassandra::string_vector2map(vector<string> str, string separator, map
 }
 
 //=============================================================================
-//=============================================================================
-string HdbPPCassandra::get_data_type(int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                     int format /*SCALAR, SPECTRUM, ..*/,
-                                     int write_type /*READ, READ_WRITE, ..*/) const
-{
-    TRACE_ENTER;
-
-    ostringstream data_type;
-
-    if (format == Tango::SCALAR)
-    {
-        data_type << TYPE_SCALAR << "_";
-    }
-    else
-    {
-        data_type << TYPE_ARRAY << "_";
-    }
-
-    switch (type)
-    {
-        case Tango::DEV_BOOLEAN:
-            data_type << TYPE_DEV_BOOLEAN << "_";
-            break;
-        case Tango::DEV_UCHAR:
-            data_type << TYPE_DEV_UCHAR << "_";
-            break;
-        case Tango::DEV_SHORT:
-            data_type << TYPE_DEV_SHORT << "_";
-            break;
-        case Tango::DEV_USHORT:
-            data_type << TYPE_DEV_USHORT << "_";
-            break;
-        case Tango::DEV_LONG:
-            data_type << TYPE_DEV_LONG << "_";
-            break;
-        case Tango::DEV_ULONG:
-            data_type << TYPE_DEV_ULONG << "_";
-            break;
-        case Tango::DEV_LONG64:
-            data_type << TYPE_DEV_LONG64 << "_";
-            break;
-        case Tango::DEV_ULONG64:
-            data_type << TYPE_DEV_ULONG64 << "_";
-            break;
-        case Tango::DEV_FLOAT:
-            data_type << TYPE_DEV_FLOAT << "_";
-            break;
-        case Tango::DEV_DOUBLE:
-            data_type << TYPE_DEV_DOUBLE << "_";
-            break;
-        case Tango::DEV_STRING:
-            data_type << TYPE_DEV_STRING << "_";
-            break;
-        case Tango::DEV_STATE:
-            data_type << TYPE_DEV_STATE << "_";
-            break;
-        case Tango::DEV_ENCODED:
-            data_type << TYPE_DEV_ENCODED << "_";
-            break;
-        default:
-            stringstream error_desc;
-            error_desc << "(" << type << ", ...): Type not supported (" << __FILE__ << ":"
-                       << __LINE__ << ")" << ends;
-            LOG(Error) << error_desc.str() << endl;
-            Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR, error_desc.str(), __func__);
-    }
-
-    if (write_type == Tango::READ)
-    {
-        data_type << TYPE_RO;
-    }
-    else
-    {
-        data_type << TYPE_RW;
-    }
-
-    TRACE_EXIT;
-    return data_type.str();
-}
-
-//=============================================================================
-//=============================================================================
-string HdbPPCassandra::get_table_name(int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                      int format /*SCALAR, SPECTRUM, ..*/,
-                                      int write_type /*READ, READ_WRITE, ..*/) const
-{
-    ostringstream table_name;
-    table_name << "att_" << get_data_type(type, format, write_type);
-    return table_name.str();
-}
-
-//=============================================================================
 /**
  * insert_attr_conf(): Insert the provided attribute into the configuration table (add it)
  *
@@ -2096,33 +1105,27 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
 {
     TRACE_ENTER;
 
-    ostringstream insert_str;
+    CassStatement *statement = _prepared_statements->statement(Query::InsertAttributeConf);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
 
-    insert_str << "INSERT INTO " << m_keyspace_name << "." << CONF_TABLE_NAME << " (" << CONF_COL_ID
-               << "," << CONF_COL_FACILITY << "," << CONF_COL_NAME << "," << CONF_COL_TYPE << ","
-               << CONF_COL_TTL << ")"
-               << " VALUES (?, ?, ?, ?, ?)" << ends;
-
-    CassStatement *statement =
-        cass_statement_new(insert_str.str().c_str(), 5); // TODO Reuse prepared statement!
-
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
     CassUuidGen *uuid_gen = cass_uuid_gen_new();
-
     cass_uuid_gen_time(uuid_gen, &uuid);
-    cass_statement_bind_uuid(statement, 0, uuid);
-    cass_statement_bind_string(statement, 1, attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string(statement, 2, attr_name.full_attribute_name().c_str());
-    cass_statement_bind_string(statement, 3, data_type.c_str());
-    cass_statement_bind_int32(statement, 4, ttl);
+
+    cass_statement_bind_uuid_by_name(statement, CONF_COL_ID.c_str(), uuid);
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
+                                       attr_name.full_attribute_name().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_TYPE.c_str(), data_type.c_str());
+    cass_statement_bind_int32_by_name(statement, CONF_COL_TTL.c_str(), ttl);
 
     CassError rc = execute_statement(statement);
     cass_uuid_gen_free(uuid_gen);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", insert_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertAttributeConf), rc,
+                                __func__);
 
     TRACE_EXIT;
 }
@@ -2139,25 +1142,17 @@ void HdbPPCassandra::insert_domain(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
-    ostringstream insert_domains_str;
-
-    insert_domains_str << "INSERT INTO " << m_keyspace_name << "." << DOMAINS_TABLE_NAME << " ("
-                       << DOMAINS_COL_FACILITY << "," << DOMAINS_COL_DOMAIN << ")"
-                       << " VALUES (?,?)" << ends;
-
-    CassStatement *statement =
-        cass_statement_new(insert_domains_str.str().c_str(), 2); // TODO Reuse prepared statement?
-
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
-    cass_statement_bind_string(statement, 0, attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.domain().c_str());
+    CassStatement *statement = _prepared_statements->statement(Query::InsertDomain);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_bind_string_by_name(statement, DOMAINS_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, DOMAINS_COL_DOMAIN.c_str(), attr_name.domain().c_str());
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", insert_domains_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertDomain), rc, __func__);
 
     TRACE_EXIT;
 }
@@ -2174,27 +1169,18 @@ void HdbPPCassandra::insert_family(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
-    ostringstream insert_families_str;
-
-    insert_families_str << "INSERT INTO " << m_keyspace_name << "." << FAMILIES_TABLE_NAME << " ("
-                        << FAMILIES_COL_FACILITY << "," << FAMILIES_COL_DOMAIN << ","
-                        << FAMILIES_COL_FAMILY << ")"
-                        << " VALUES (?,?,?)" << ends;
-
-    CassStatement *statement =
-        cass_statement_new(insert_families_str.str().c_str(), 3); // TODO Reuse prepared statement?
-
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
-    cass_statement_bind_string(statement, 0, attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.domain().c_str());
-    cass_statement_bind_string(statement, 2, attr_name.family().c_str());
+    CassStatement *statement = _prepared_statements->statement(Query::InsertFamily);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_bind_string_by_name(statement, FAMILIES_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, FAMILIES_COL_DOMAIN.c_str(), attr_name.domain().c_str());
+    cass_statement_bind_string_by_name(statement, FAMILIES_COL_FAMILY.c_str(), attr_name.family().c_str());
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", insert_families_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertFamily), rc, __func__);
 
     TRACE_EXIT;
 }
@@ -2211,28 +1197,19 @@ void HdbPPCassandra::insert_member(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
-    ostringstream insert_members_str;
-
-    insert_members_str << "INSERT INTO " << m_keyspace_name << "." << MEMBERS_TABLE_NAME << " ("
-                       << MEMBERS_COL_FACILITY << "," << MEMBERS_COL_DOMAIN << ","
-                       << MEMBERS_COL_FAMILY << "," << MEMBERS_COL_MEMBER << ")"
-                       << " VALUES (?,?,?,?)" << ends;
-
-    CassStatement *statement =
-        cass_statement_new(insert_members_str.str().c_str(), 4); // TODO Reuse prepared statement?
-
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
-    cass_statement_bind_string(statement, 0, attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.domain().c_str());
-    cass_statement_bind_string(statement, 2, attr_name.family().c_str());
-    cass_statement_bind_string(statement, 3, attr_name.member().c_str());
+    CassStatement *statement = _prepared_statements->statement(Query::InsertMember);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_bind_string_by_name(statement, MEMBERS_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, MEMBERS_COL_DOMAIN.c_str(), attr_name.domain().c_str());
+    cass_statement_bind_string_by_name(statement, MEMBERS_COL_FAMILY.c_str(), attr_name.family().c_str());
+    cass_statement_bind_string_by_name(statement, MEMBERS_COL_MEMBER.c_str(), attr_name.member().c_str());
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", insert_members_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertMember), rc, __func__);
 
     TRACE_EXIT;
 }
@@ -2249,30 +1226,23 @@ void HdbPPCassandra::insert_attr_name(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
-    ostringstream insert_att_names_str;
-
-    insert_att_names_str << "INSERT INTO " << m_keyspace_name << "." << ATT_NAMES_TABLE_NAME << " ("
-                         << ATT_NAMES_COL_FACILITY << "," << ATT_NAMES_COL_DOMAIN << ","
-                         << ATT_NAMES_COL_FAMILY << "," << ATT_NAMES_COL_MEMBER << ","
-                         << ATT_NAMES_COL_NAME << ")"
-                         << " VALUES (?,?,?,?,?)" << ends;
-
-    CassStatement *statement =
-        cass_statement_new(insert_att_names_str.str().c_str(), 5); // TODO Reuse prepared statement?
-
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-    // consistency
-    // tunable?
-    cass_statement_bind_string(statement, 0, attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.domain().c_str());
-    cass_statement_bind_string(statement, 2, attr_name.family().c_str());
-    cass_statement_bind_string(statement, 3, attr_name.member().c_str());
-    cass_statement_bind_string(statement, 4, attr_name.name().c_str());
+    CassStatement *statement = _prepared_statements->statement(Query::InsertName);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_DOMAIN.c_str(),
+                                       attr_name.domain().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FAMILY.c_str(),
+                                       attr_name.family().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_MEMBER.c_str(),
+                                       attr_name.member().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_NAME.c_str(), attr_name.name().c_str());
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing insert query", insert_att_names_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing insert query",
+                                _prepared_statements->query_string(Query::InsertName), rc, __func__);
 
     TRACE_EXIT;
 }
@@ -2292,25 +1262,19 @@ void HdbPPCassandra::update_ttl(unsigned int ttl, AttributeName &attr_name)
 {
     TRACE_ENTER;
 
-    ostringstream update_ttl_query_str;
-
-    update_ttl_query_str << "UPDATE " << m_keyspace_name << "." << CONF_TABLE_NAME << " SET "
-                         << CONF_COL_TTL << " = " << ttl << " WHERE " << CONF_COL_FACILITY
-                         << " = ? AND " << CONF_COL_NAME << " = ?" << ends;
-
-    CassStatement *statement =
-        cass_statement_new(update_ttl_query_str.str().c_str(), 2); // TODO Reuse prepared statement?
-
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the //
-    // consistency //
-    // tunable?
-    cass_statement_bind_string(statement, 0, attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string(statement, 1, attr_name.full_attribute_name().c_str());
+    CassStatement *statement = _prepared_statements->statement(Query::UpdateTtl);
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_bind_int32_by_name(statement, CONF_COL_TTL.c_str(), ttl);
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
+                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
+                                       attr_name.full_attribute_name().c_str());
 
     CassError rc = execute_statement(statement);
 
     if (rc != CASS_OK)
-        throw_execute_exception("ERROR executing update tll query", update_ttl_query_str.str(), rc, __func__);
+        throw_execute_exception("ERROR executing update tll query",
+                                _prepared_statements->query_id_to_str(Query::UpdateTtl), rc, __func__);
 
     // Cassandra command was successfull, so update the ttl in the cache
     map<string, AttributeParams>::iterator it =
