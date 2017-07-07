@@ -60,7 +60,6 @@ public:
     /**
      * @brief Construct an AttributeName object
      *
-     * @todo Check the fqdn_attr_name is correctly formed
      * @param fqdn_attr_name Fully qualified attribute name
      * @throw Tango::DevFailed
     */

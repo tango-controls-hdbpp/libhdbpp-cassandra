@@ -1,5 +1,5 @@
 /* Copyright (C) : 2014-2017
-   European Synchrotron Radiation tango_host
+   European Synchrotron Radiation Facility
    BP 220, Grenoble 38043, FRANCE
    This file is part of libhdb++cassandra.
    libhdb++cassandra is free software: you can redistribute it and/or modify

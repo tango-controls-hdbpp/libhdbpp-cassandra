@@ -38,8 +38,8 @@ namespace HDBPP
 //=============================================================================
 const std::string &AttributeName::fully_qualified_attribute_name() const
 {
-    // TODO we could somehow force a check that the _fqdn_attr_name is actually valid
-    // perhaps in the constructor
+    /// @todo we could somehow force a check that the _fqdn_attr_name is actually valid perhaps in
+    /// the constructor
     if (_fqdn_attr_name.empty())
     {
         stringstream error_desc;

@@ -241,7 +241,7 @@ const string &PreparedStatementCache::look_up_query_string(int data_type, int da
                   << "," << SC_COL_RCV_TIME << "," << SC_COL_RCV_TIME_US << "," << SC_COL_INS_TIME
                   << "," << SC_COL_INS_TIME_US << "," << SC_COL_QUALITY << "," << SC_COL_ERROR_DESC;
 
-        // TODO: store dim_x, dim_y for spectrum attributes
+        // @todo store dim_x, dim_y for spectrum attributes
 
         // the query column size may change based on the data_write_type variable
         if (data_write_type != Tango::WRITE)
@@ -377,7 +377,7 @@ string PreparedStatementCache::get_table_name(int data_type, int data_format, in
 string PreparedStatementCache::create_query_id_from_data(int data_type, int data_format, int data_write_type) const
 {
     // since this is a special case not using the enums, we need to build a string to
-    // cache against. In this case, uwe use a prefix of InsertAttr combined with the
+    // cache against. In this case, we use a prefix of InsertAttr combined with the
     // table name
     return string("InsertAttr_").append(get_table_name(data_type, data_format, data_write_type));
 }

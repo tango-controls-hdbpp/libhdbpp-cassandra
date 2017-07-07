@@ -467,7 +467,7 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
         LOG(Debug) << "SUCCESS in query: "
                    << _prepared_statements->query_id_to_str(Query::FindAttrIdTypeAndTtlInDb) << endl;
 
-        // TODO Improve error handling
+        /// @todo Improve error handling
         const CassRow *row = cass_iterator_get_row(iterator);
         cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
         const char *db_type_res;
@@ -522,9 +522,9 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
     last_event = "??";
 
     CassStatement *statement = _prepared_statements->statement(Query::FindLastEvent);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM); // TODO: Make the
-                                                                              // consistency
-                                                                              // tunable?
+
+    /// @todo Make the consistency tunable?
+    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
     cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), id);
 
     CassFuture *future = cass_session_execute(mp_session, statement);
@@ -637,10 +637,11 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     }
     else
     {
-        attr_r_dim.dim_x = 0; // max_dim_x;//TODO: OK?
-        attr_w_dim.dim_x = 0; // max_dim_x;//TODO: OK?
-        attr_r_dim.dim_y = 0; // max_dim_y;//TODO: OK?
-        attr_w_dim.dim_y = 0; // max_dim_y;//TODO: OK?
+        /// @todo Check this is ok?
+        attr_r_dim.dim_x = 0;
+        attr_w_dim.dim_x = 0;
+        attr_r_dim.dim_y = 0;
+        attr_w_dim.dim_y = 0;
         ev_time = rcv_time;
         ev_time_us = rcv_time_us;
     }
@@ -674,17 +675,11 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     cass_statement_bind_int64_by_name(statement, SC_COL_EV_TIME.c_str(), ev_time);
     cass_statement_bind_int32_by_name(statement, SC_COL_EV_TIME_US.c_str(), ev_time_us);
 
-    if (_store_diag_times)
-    {
-        cass_statement_bind_int64_by_name(statement, SC_COL_RCV_TIME.c_str(), rcv_time);
-        cass_statement_bind_int32_by_name(statement, SC_COL_RCV_TIME_US.c_str(), rcv_time_us);
-    }
-
     // Get the current time
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
     {
-        // TODO handle this error?
+        /// @todo handle this error?
         perror("clock_gettime()");
     }
 
@@ -692,6 +687,9 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     {
         int64_t insert_time = ((int64_t)ts.tv_sec) * 1000;
         int insert_time_us = ts.tv_nsec / 1000;
+
+        cass_statement_bind_int64_by_name(statement, SC_COL_RCV_TIME.c_str(), rcv_time);
+        cass_statement_bind_int32_by_name(statement, SC_COL_RCV_TIME_US.c_str(), rcv_time_us);
         cass_statement_bind_int64_by_name(statement, SC_COL_INS_TIME.c_str(), insert_time);
         cass_statement_bind_int32_by_name(statement, SC_COL_INS_TIME_US.c_str(), insert_time_us);
     }
@@ -738,7 +736,7 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
     {
-        // TODO handle this error?
+        /// @todo handle this error?
         perror("clock_gettime()");
     }
     int64_t current_time = ((int64_t)ts.tv_sec) * 1000;
@@ -811,16 +809,21 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     struct timespec ts;
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
     {
-        // TODO (SJ) Is this a bad error?
+        /// @todo Is this a bad error?
         perror("clock_gettime()");
     }
 
-    int64_t insert_time = ((int64_t)ts.tv_sec) * 1000;
-    int insert_time_us = ts.tv_nsec / 1000;
     cass_statement_bind_int64_by_name(statement, PARAM_COL_EV_TIME.c_str(), ev_time); // recv_time
     cass_statement_bind_int32_by_name(statement, PARAM_COL_EV_TIME_US.c_str(), ev_time_us); // recv_time_us
-    cass_statement_bind_int64_by_name(statement, PARAM_COL_INS_TIME.c_str(), insert_time); // insert_time
-    cass_statement_bind_int32_by_name(statement, PARAM_COL_INS_TIME_US.c_str(), insert_time_us); // insert_time_us
+
+    if (_store_diag_times)
+    {
+        int64_t insert_time = ((int64_t)ts.tv_sec) * 1000;
+        int insert_time_us = ts.tv_nsec / 1000;
+
+        cass_statement_bind_int64_by_name(statement, PARAM_COL_INS_TIME.c_str(), insert_time);
+        cass_statement_bind_int32_by_name(statement, PARAM_COL_INS_TIME_US.c_str(), insert_time_us);
+    }
 
     LOG(Debug) << " label: \"" << data->attr_conf->label.c_str() << "\"" << endl;
     LOG(Debug) << " unit: \"" << data->attr_conf->unit.c_str() << "\"" << endl;
@@ -840,28 +843,31 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     LOG(Debug) << " description: \"" << data->attr_conf->description.c_str() << "\"" << endl;
     LOG(Debug) << " after binding description" << endl;
 
-    cass_statement_bind_string_by_name(statement, PARAM_COL_LABEL.c_str(),
-                                       data->attr_conf->label.c_str()); // label
-    cass_statement_bind_string_by_name(statement, PARAM_COL_UNIT.c_str(), data->attr_conf->unit.c_str()); // unit
+    cass_statement_bind_string_by_name(statement, PARAM_COL_LABEL.c_str(), data->attr_conf->label.c_str());
+
+    cass_statement_bind_string_by_name(statement, PARAM_COL_UNIT.c_str(), data->attr_conf->unit.c_str());
 
     cass_statement_bind_string_by_name(statement, PARAM_COL_STANDARDUNIT.c_str(),
-                                       data->attr_conf->standard_unit.c_str()); // standard unit
+                                       data->attr_conf->standard_unit.c_str());
 
     cass_statement_bind_string_by_name(statement, PARAM_COL_DISPLAYUNIT.c_str(),
-                                       data->attr_conf->display_unit.c_str()); // display unit
+                                       data->attr_conf->display_unit.c_str());
+
     cass_statement_bind_string_by_name(statement, PARAM_COL_FORMAT.c_str(),
-                                       data->attr_conf->format.c_str()); // format
+                                       data->attr_conf->format.c_str());
 
     cass_statement_bind_string_by_name(statement, PARAM_COL_ARCHIVERELCHANGE.c_str(),
-                                       data->attr_conf->events.arch_event.archive_rel_change.c_str()); // archive relative range
+                                       data->attr_conf->events.arch_event.archive_rel_change.c_str());
 
     cass_statement_bind_string_by_name(statement, PARAM_COL_ARCHIVEABSCHANGE.c_str(),
-                                       data->attr_conf->events.arch_event.archive_abs_change.c_str()); // archive abs change
+                                       data->attr_conf->events.arch_event.archive_abs_change.c_str());
 
     cass_statement_bind_string_by_name(statement, PARAM_COL_ARCHIVEPERIOD.c_str(),
-                                       data->attr_conf->events.arch_event.archive_period.c_str()); // archive period
+                                       data->attr_conf->events.arch_event.archive_period.c_str());
+
     cass_statement_bind_string_by_name(statement, PARAM_COL_DESCRIPTION.c_str(),
-                                       data->attr_conf->description.c_str()); // description
+                                       data->attr_conf->description.c_str());
+
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
 
     CassError rc = execute_statement(statement);
