@@ -231,7 +231,9 @@ void HdbPPCassandra::connect_session()
         stringstream error_desc;
         error_desc << "Error connecting to the Cassandra Cluster: " << cass_error_desc(rc) << ends;
         cass_cluster_free(mp_cluster);
+        cass_session_free(mp_session);
         mp_cluster = NULL;
+        mp_session = NULL;
         Tango::Except::throw_exception(EXCEPTION_TYPE_CONNECTION, error_desc.str(), __func__);
     }
     else

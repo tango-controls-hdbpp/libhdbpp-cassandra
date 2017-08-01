@@ -84,6 +84,9 @@ void PreparedStatementCache::free_cache()
 {
     for (auto &iter : _prepared_statement_cache)
         cass_prepared_free(iter.second);
+
+    _prepared_statement_cache.clear();
+    _query_cache.clear();
 }
 
 //=============================================================================
@@ -289,9 +292,12 @@ CassStatement *PreparedStatementCache::create_and_cache_prepared_object(const st
     {
         cass_future_free(prepare_future);
         stringstream error_desc;
+
         error_desc << "Failed to prepare statement for query: " << query_str
                    << ". Error: " << cass_error_desc(error) << ends;
+
         LOG(Error) << error_desc.str() << endl;
+        
         Tango::Except::throw_exception(EXCEPTION_PREPARED_STATEMENT_ERROR, error_desc.str().c_str(),
                                        __func__);
     }

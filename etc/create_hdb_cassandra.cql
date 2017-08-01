@@ -1,6 +1,6 @@
 -- Create hdb keyspace
 -- Please adapt the replication factor (3 by default here) to your use case
-CREATE KEYSPACE IF NOT EXISTS hdb WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy', 'DC1' : 3 };
+CREATE KEYSPACE IF NOT EXISTS hdb WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy', 'DC1' : 1 };
 
 USE hdb;
 
@@ -32,7 +32,6 @@ event text, -- 'add','remove','start','stop' or 'crash'
 PRIMARY KEY(att_conf_id, time, time_us)
 )
 WITH comment='Attribute Configuration Events History Table';
-
 
 CREATE TABLE IF NOT EXISTS att_scalar_devboolean_ro (
 att_conf_id timeuuid,

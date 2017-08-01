@@ -36,10 +36,13 @@ HEADERS = src/LibHdb++Cassandra.h \
 
 UNIT_TESTS_SOURCE = test/main.cpp \
 					test/AttributeNameTests.cpp \
-					test/PreparedStatementCacheTests.cpp
+					test/PreparedStatementCacheTests.cpp \
+					test/CassandraConnectionTests.cpp \
+					test/CassandraConnection.cpp \
+					test/DbCommands.cpp 
 
 OBJECTS = $(patsubst src%,obj%,$(SOURCES:.cpp=.o))	
-UNIT_TESTS_OBJECTS = $(patsubst test%,test%,$(UNIT_TESTS_SOURCE:.cpp=.o))
+UNIT_TESTS_OBJECTS = $(patsubst test%,test/obj%,$(UNIT_TESTS_SOURCE:.cpp=.o))
 
 ##############################################
 # compile and link options
@@ -94,7 +97,8 @@ bin/${UNIT_TEST_TARGET}: bin ${UNIT_TESTS_OBJECTS}
 	${TANGO_LIB} ${OMNIORB_LIB} ${ZMQ_LIB} ${LIBUV_LIB} ${CASSANDRA_LIB} \
 	lib/$(STATIC_LIBRARY) -Wl,-rpath=$(PWD)/lib
 
-test/%.o: test/%.cpp
+test/obj/%.o: test/%.cpp
+	@mkdir -p test/obj
 	$(CXX) $(CXXFLAGS) $(INCLUDE_PATH) -c $< -o $@
 
 clean-tests:

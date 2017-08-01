@@ -47,53 +47,7 @@ class PreparedStatementCache;
  */
 class HdbPPCassandra : public AbstractDB
 {
-private:
-    enum FindAttrResult
-    {
-        AttrNotFound,
-        FoundAttrWithDifferentType,
-        FoundAttrWithSameType
-    };
-
-    enum extract_t
-    {
-        EXTRACT_READ,
-        EXTRACT_SET
-    };
-
-    // Parameters for an attribute that can be cached. Mapped to the attribute name
-    // in a map below.
-    struct AttributeParams
-    {
-        AttributeParams(CassUuid param_id, unsigned int param_ttl) : id(param_id), ttl(param_ttl) {}
-        CassUuid id;
-        unsigned int ttl;
-    };
-
-    // cache the attribute name to some of its often used data, i.e. ttl and id. This
-    // saves it being looked up in the database everytime we request it
-    map<string, AttributeParams> attribute_cache;
-
-    CassCluster *mp_cluster;
-    CassSession *mp_session;
-    CassLogLevel cassandra_logging_level;
-
-    string m_keyspace_name;
-
-    // used to flag up whether the library will store the diagnostic timestamps,
-    // setting to false via the configuration will save database space
-    bool _store_diag_times = false;
-
-    // manage prepared statement objects
-    PreparedStatementCache *_prepared_statements;
-
 public:
-    /**
-     * @brief HdbPPCassandra destructor
-     *
-     * The destructor will attempt to disconnect an open Cassandra session
-     */
-    ~HdbPPCassandra();
 
     /**
      * @brief HdbPPCassandra constructor
@@ -130,6 +84,13 @@ public:
      * @param configuration A list of configuration parameters to start the driver with.
      */
     HdbPPCassandra(vector<string> configuration);
+
+    /**
+     * @brief HdbPPCassandra destructor
+     *
+     * The destructor will attempt to disconnect an open Cassandra session
+     */
+    ~HdbPPCassandra();
 
     /**
      * @brief Insert an attribute archive event into the database
@@ -235,6 +196,39 @@ private:
     CassError execute_statement(CassStatement *statement);
     void throw_execute_exception(string message, string query, CassError error, const char *origin);
     void string_vector2map(vector<string> str, string separator, map<string, string> *results);
+
+    enum FindAttrResult
+    {
+        AttrNotFound,
+        FoundAttrWithDifferentType,
+        FoundAttrWithSameType
+    };
+
+    // Parameters for an attribute that can be cached. Mapped to the attribute name
+    // in a map below.
+    struct AttributeParams
+    {
+        AttributeParams(CassUuid param_id, unsigned int param_ttl) : id(param_id), ttl(param_ttl) {}
+        CassUuid id;
+        unsigned int ttl;
+    };
+
+    // cache the attribute name to some of its often used data, i.e. ttl and id. This
+    // saves it being looked up in the database everytime we request it
+    map<string, AttributeParams> attribute_cache;
+
+    CassCluster *mp_cluster;
+    CassSession *mp_session;
+    CassLogLevel cassandra_logging_level;
+
+    string m_keyspace_name;
+
+    // used to flag up whether the library will store the diagnostic timestamps,
+    // setting to false via the configuration will save database space
+    bool _store_diag_times = false;
+
+    // manage prepared statement objects
+    PreparedStatementCache *_prepared_statements;    
 };
 
 /**

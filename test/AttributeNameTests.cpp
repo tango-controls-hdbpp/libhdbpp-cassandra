@@ -14,11 +14,12 @@
    along with libhdb++cassandra.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "AttributeName.h"
+#include "catch.hpp"
 
 using namespace std;
 using namespace HDBPP;
 
-SCENARIO("AttributeName supports fully qualified attribute name")
+SCENARIO("AttributeName supports fully qualified attribute name", "[attribute name]")
 {
     GIVEN("Attribute name: tango://acudebian7.esrf.fr:10000/test/universal/1/devshortrw")
     {
@@ -93,7 +94,7 @@ SCENARIO("AttributeName supports fully qualified attribute name")
     }
 }
 
-SCENARIO("AttributeName supports fully qualified attribute name missing tango prefix")
+SCENARIO("AttributeName supports fully qualified attribute name missing tango prefix", "[attribute name]")
 {
     GIVEN("Attribute name: acudebian7.esrf.fr:10000/test/universal/1/devshortrw")
     {    
@@ -168,7 +169,7 @@ SCENARIO("AttributeName supports fully qualified attribute name missing tango pr
     } 
 }
 
-SCENARIO("AttributeName supports fully qualified attribute name but no network domain")
+SCENARIO("AttributeName supports fully qualified attribute name but no network domain", "[attribute name]")
 {
     GIVEN("Attribute name: acudebian7:10000/test/universal/1/devshortrw")
     {    
