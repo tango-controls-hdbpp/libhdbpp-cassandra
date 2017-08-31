@@ -95,7 +95,7 @@ SCENARIO("Statement cache can grow when statement requests are made", "[prepared
                 REQUIRE_NOTHROW(statement = cache.statement(Query::FindAttrIdAndTtlInDb));
                 REQUIRE(statement != NULL);
 
-                THEN("Statement cache grows by only 1")
+                THEN("Statement cache remains size 1")
                 {
                     REQUIRE(cache.statement_cache_size() == 1);
                 }            

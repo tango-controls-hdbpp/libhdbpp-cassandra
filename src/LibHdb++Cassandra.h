@@ -167,6 +167,22 @@ public:
     virtual void event_Attr(string fqdn_attr_name, unsigned char event);
 
 private:
+    enum FindAttrResult
+    {
+        AttrNotFound,
+        FoundAttrWithDifferentType,
+        FoundAttrWithSameType
+    };
+
+    // Parameters for an attribute that can be cached. Mapped to the attribute name
+    // in a map below.
+    struct AttributeParams
+    {
+        AttributeParams(CassUuid param_id, unsigned int param_ttl) : id(param_id), ttl(param_ttl) {}
+        CassUuid id;
+        unsigned int ttl;
+    };
+
     void connect_session();
     string remove_domain(string facility);
 
@@ -196,22 +212,6 @@ private:
     CassError execute_statement(CassStatement *statement);
     void throw_execute_exception(string message, string query, CassError error, const char *origin);
     void string_vector2map(vector<string> str, string separator, map<string, string> *results);
-
-    enum FindAttrResult
-    {
-        AttrNotFound,
-        FoundAttrWithDifferentType,
-        FoundAttrWithSameType
-    };
-
-    // Parameters for an attribute that can be cached. Mapped to the attribute name
-    // in a map below.
-    struct AttributeParams
-    {
-        AttributeParams(CassUuid param_id, unsigned int param_ttl) : id(param_id), ttl(param_ttl) {}
-        CassUuid id;
-        unsigned int ttl;
-    };
 
     // cache the attribute name to some of its often used data, i.e. ttl and id. This
     // saves it being looked up in the database everytime we request it

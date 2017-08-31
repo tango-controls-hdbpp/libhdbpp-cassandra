@@ -41,6 +41,7 @@ public:
                 FAIL("Database connection failed");
                 delete connection();
                 connection() = NULL;
+                return NULL;
             }
             
             WARN("Database connection alive");
