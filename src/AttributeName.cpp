@@ -20,8 +20,8 @@
 #include "AttributeName.h"
 #include "LibHdb++Defines.h"
 #include "Log.h"
-#include "tango.h"
 
+#include <tango/tango.h>
 #include <cstring>
 #include <netdb.h> //for getaddrinfo
 
