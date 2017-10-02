@@ -2,7 +2,11 @@
 
 [HDB++](http://www.tango-controls.org/community/projects/hdbplus) library for Apache Cassandra backend. This library is loaded by [Libhdbpp](https://github.com/tango-controls/libhdbpp) to archive events from a Tango Controls system.
 
-## **Important Changes** 0.9.1 -> 0.10.0
+## Version
+
+The current release version is 0.10.0.
+
+### **Important Changes** 0.9.1 -> 0.10.0
 
 This release version of the library has made a few changes to standardize its use and deployment.
 * The build system has been moved to CMake. Details on building it using CMake are below.
@@ -25,15 +29,31 @@ See the [INSTALL.md](https://github.com/tango-controls/libhdbpp-cassandra/blob/m
 
 ## Running Tests
 
-The library is now partially covered with unit tests built on the Catch Unit Test framework. These are still under active development. 
+The library is now partially covered with unit tests built on the Catch Unit Test framework. These are still under active development. The unit test binary is output to the bin directory.
 
-To run the tests a running cassandra node is required to test against. See the [INSTALL.md](https://github.com/tango-controls/libhdbpp/blob/master/INSTALL.md) for the flags to build the unit tests. Once built, they ca be run from the command line as follows. 
+To run all the tests a running cassandra node is required to test against. See the [INSTALL.md](https://github.com/tango-controls/libhdbpp/blob/master/INSTALL.md) for the flags to build the unit tests. Once built, they can be run from the command line as follows. 
 
 ```bash
 ./bin/unit-tests
 ```
 
-To look at the 
+To look at the available tests and tags, should you wish to run a subset of the test suite (for example, you do not have a cassandra node to test against), then tests and be listed:
+
+```bash
+./bin/unit-tests --list-tests
+```
+
+Or:
+
+```bash
+./bin/unit-tests --list-tags
+```
+
+To see more options for the unit-test command line binary:
+
+```ash
+./bin/unit-tests --help
+```
 
 ## Compatibility
 

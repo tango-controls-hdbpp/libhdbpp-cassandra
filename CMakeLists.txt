@@ -39,31 +39,24 @@ set(CMAKE_COLOR_MAKEFILE   ON)
 project(shared_library)
 project(static_library)
 
-# Project version
-# Project version
-set(LIBHDBPP_CASSANDRA_VERSION_MAJOR "0")
-set(LIBHDBPP_CASSANDRA_VERSION_MINOR "9")
-set(LIBHDBPP_CASSANDRA_VERSION_REVISION "1")
-string(TIMESTAMP LIBHDBPP_CASSANDRA_TIMESTAMP "%Y-%m-%d %H:%M:%S")
-
-# Version the shared library
-set(LIBRARY_VERSION_MAJOR 7)
-set(LIBRARY_VERSION_MINOR 0)
-set(LIBRARY_VERSION_PATCH 1)
-
-set(LIBRARY_VERSION_STRING 
-    ${LIBRARY_VERSION_MAJOR}.${LIBRARY_VERSION_MINOR}.${LIBRARY_VERSION_PATCH})
+# Include the version strings
+include(cmake/ReleaseVersion.cmake)
 
 # Check any custom flags
 option(HDBPP_CASS_BUILD_SHARED "Build shared library" ON)
 option(HDBPP_CASS_BUILD_STATIC "Build static library" OFF)
 option(HDBPP_CASS_BUILD_TESTS "Build unit tests" OFF)
-option(HDBPP_CASS_INSTALL_HEADERS "Install header files on install" OFF)
+option(HDBPP_CASS_INSTALL_SCRIPTS "Install scripts and utility files on install" OFF)
+option(HDBPP_CASS_DEV_INSTALL "Install development files" OFF)
 
 # Debug the flags
-if(HDBPP_CASS_INSTALL_HEADERS)
-    message(STATUS "Header install requested")
-endif(HDBPP_CASS_INSTALL_HEADERS)
+if(HDBPP_CASS_DEV_INSTALL)
+    message(STATUS "Development install requested")
+endif(HDBPP_CASS_DEV_INSTALL)
+
+if(HDBPP_CASS_INSTALL_SCRIPTS)
+    message(STATUS "Script/utility file install requested")
+endif(HDBPP_CASS_INSTALL_SCRIPTS)
 
 if(HDBPP_CASS_BUILD_TESTS)
     message(STATUS "Unit tests will be built, requires static library also")
@@ -120,7 +113,6 @@ message(STATUS "Searching for libraries...")
 # Variable to contain a list of all the libs we depend on
 set(LIBRARIES 
     libcassandra.so
-    libhdb++.so
     libtango.so
     libomnithread.so
     libomniORB4.so) 
@@ -200,16 +192,28 @@ endif(HDBPP_CASS_BUILD_STATIC)
 
 # Install Config -----------------------------------
 if(HDBPP_CASS_BUILD_SHARED)
-    install(TARGETS shared_library LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+    if(HDBPP_CASS_DEV_INSTALL)
+        install(TARGETS shared_library LIBRARY 
+            DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+        install(FILES src/LibHdb++Cassandra.h 
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libhdb++cassandra)            
+    else()
+        install(TARGETS shared_library 
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            NAMELINK_SKIP)
+    endif(HDBPP_CASS_BUILD_SHARED)
+
 endif(HDBPP_CASS_BUILD_SHARED)
 
 if(HDBPP_CASS_BUILD_STATIC)
     install(TARGETS static_library ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif(HDBPP_CASS_BUILD_STATIC)
 
-if(HDBPP_CASS_INSTALL_HEADERS)
-    install(FILES src/LibHdb++Cassandra.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libhdb++cassandra)
-endif(HDBPP_CASS_INSTALL_HEADERS)
+if(HDBPP_CASS_INSTALL_SCRIPTS)
+    install(FILES etc/create_hdb_cassandra.cql DESTINATION ${CMAKE_INSTALL_DATADIR}/libhdb++cassandra)
+endif(HDBPP_CASS_INSTALL_SCRIPTS)
 
 # Tests -----------------------------------
 if(HDBPP_CASS_BUILD_TESTS)
