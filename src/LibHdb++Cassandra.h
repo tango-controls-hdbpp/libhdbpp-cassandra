@@ -21,9 +21,9 @@
 #define _HDBPP_CASSANDRA_H
 
 #include "AttributeName.h"
-#include "libhdb++/LibHdb++.h"
+#include <libhdb++/LibHdb++.h>
 
-#include <tango/tango.h>
+#include <tango.h>
 #include <cassandra.h>
 #include <map>
 #include <string>

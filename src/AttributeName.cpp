@@ -21,7 +21,7 @@
 #include "LibHdb++Defines.h"
 #include "Log.h"
 
-#include <tango/tango.h>
+#include <tango.h>
 #include <cstring>
 #include <netdb.h> //for getaddrinfo
 

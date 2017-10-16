@@ -3,29 +3,41 @@
 
 ## Dependencies
 
-Libhdbpp-Cassandra has dependencies on Libhdpp, the Datastax Cassandra C++ Driver and some Tango Controls related libraries and dependencies. If you install any library or include file in non-standard location (i.e. local build environment for testing), then use standard CMake flags below to inform the build where to search for them.
+Ensure the development version of the dependencies are installed. These are as follows:
 
-It is dependent on a Tango Controls install via debian package or source distribution. Supported Tango Controls release is 9.2.5a.
+* [libhdbpp](https://github.com/tango-controls/libhdbpp) - (libhdb++6). Build and install according its instructions.
+* [Datastax CPP Driver](https://github.com/datastax/cpp-driver), version 2.2.1.
+* Tango Controls 9.2.5a.
+* omniORB release 4 - libomniorb4 and libomnithread
+* libzmq - libzmq3-dev or libzmq5-dev
 
-CMake 3.0.0 or greater is required to perform the build.
+If they have not been installed in a standard location, then use standard CMake flags below to inform the build where to search for them.
 
-### Libtango.so and LibomniX.so
+The library can be built with Tango Controls install via debian package or source distribution. Supported Tango Controls release is currently 9.2.5a. Ensure build flags are used if tango is installed to a custom location.
 
-To build Libhdbpp-cassandra, ensure the `libtango.so`, `libomnithread.so` and `libomniORB4.so` are installed either via source or package manager.
+Toolchain dependencies:
+
+* CMake 3.0.0 or greater is required to perform the build.
 
 ### Datastax CPP Driver
 
 Download the [DataStax Cassandra C++ Driver](https://github.com/datastax/cpp-driver) from github and install. This is dependent on having [Libuv](https://github.com/libuv/libuv_) built and installed on the system. Datastax provide detailed [instructions](http://datastax.github.io/cpp-driver/topics/building/) to build the C++ Driver.
 
-Libhdbpp-Cassandra was developed on a debian system, so both libuv and the Datastax C++ Driver were installed from source. If you build and use libuv from a custom location (e.g. local test build environment, then you will need to inform the C++ Driver CMake build system where to search, example:
+Libhdbpp-Cassandra was developed on a debian system, so both libuv and the Datastax C++ Driver were installed from source. If you build and use libuv from a custom location (e.g. local test build environment,then you will need to inform the C++ Driver CMake build system where to search, example:
 
 ```bash
 cmake -DLIBUV_INCLUDE_DIR=/my/custom/include -DLIBUV_LIBRARY=/my/custom/lib ..
 ```
 
-### Libhdbpp
+### Debian Stetch Packages
 
-Build and install [Libhdbpp](tango-build-end/jessie/9.2.5a) according to the build instructions found at its github page.
+#### Libhdbpp Debian Package
+
+There is also a debian stretch package available to install this [here](https://bintray.com/tango-controls/debian/libhdb%2B%2B6) at bintray. 
+
+#### Datastax CPP Driver Release 2.2.1 Debian Package
+
+It is possible to take a version 2.2.1 cpp-driver debian package we have made available [here](https://bintray.com/tango-controls/debian/cassandra-cpp-driver) on bintray. This has its dependencies set correctly for libuv1. This option is only avilable on debian stretch.
 
 ## Standard flags
 
@@ -49,7 +61,7 @@ The following is a list of common useful CMake flags and their use:
 
 Using the above CMake flags above its possible to use tango and other libraries from non-standard locations. This is the preferred method, i.e. add all library and include paths to the above flags. 
 
-For convenience there also exists four path flags to define the install location of various dependencies. This is to aid moving from the older environment variable based system to the new CMake system. These can be passed in like normal CMake flags using the -D syntax, or exported into the local bash environment where they will be picked up by the build system.
+For convenience there also exists five path flags to define the install location of various dependencies. This is to aid a situation where everything is installed non-standard. These can be passed in like normal CMake flags using the -D syntax, or exported into the local bash environment where they will be picked up by the build system.
 
 | Path Flag | Description |
 |-----------|-------------|
@@ -57,6 +69,7 @@ For convenience there also exists four path flags to define the install location
 | HDBPP_CASS_OMIORB_INSTALL_DIR| Install root for Omniorb |
 | HDBPP_CASS_CPP_INSTALL_DRIVER_DIR | Install root for the Datastax CPP Driver | 
 | HDBPP_CASS_LIBHDBPP_INSTALL_DIR | Install root for Libhdbpp |
+| HDBPP_CASS_ZMQ_INSTALL_DIR | Install root for libzmq |
 
 ### Passing CMake Lists
 
@@ -68,11 +81,9 @@ Note: to pass multiple paths (i.e. a string list to cmake), either an escaped se
 
 ## Building
 
-Build using CMake version 3.0.0 or greater. An out of source build is required by the CMakeLists file.
+### Building Against Tango Controls 9.2.5a
 
-### **Important Note:** - Building Against Standard Tango Controls 9.2.5a
-
-Tango Controls 9.2.5a as source distribution or debian package on Debian Stretch installs the header files into `/usr/include/tango`, but `tango.h` includes tango headers (example `tango_config.h`) from  `/usr/include`. This means the build fails. To work around this until the next release of Tango Controls (which fixes this problem) add `/usr/include/tango` to the CMAKE_INCLUDE_PATH, eg:
+**The debian package and source install place the headers under /usr/include/tango, yet the code includes tango via `#include <tango.h>` (to be compatible with Tango Controls 10 when it is released), so its likely you will need to pass at least one path via CMAKE_INCLUDE_PATH. In this case, set CMAKE_INCLUDE_PATH=/usr/include/tango or CMAKE_INCLUDE_PATH=/usr/local/include/tango, depending on your install method. Example:**
 
 ```bash
 cmake -DCMAKE_INCLUDE_PATH=/usr/include/tango ..
@@ -86,7 +97,7 @@ First clone the repository:
 git clone http://github.com/tango-controls/libhdbpp-cassandra.git
 ```
 
-Create a build directory to run CMake from:
+An out of source build is required by the CMakeLists file, so create a build directory to run CMake from:
 
 ```
 mkdir libhdbpp-cassandra/build
