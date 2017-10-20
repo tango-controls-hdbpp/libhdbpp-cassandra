@@ -5,7 +5,7 @@
 
 Ensure the development version of the dependencies are installed. These are as follows:
 
-* [libhdbpp](https://github.com/tango-controls/libhdbpp) - (libhdb++6). Build and install according its instructions.
+* [libhdbpp](https://github.com/tango-controls-hdbpp/libhdbpp) - (libhdb++6). Build and install according its instructions.
 * [Datastax CPP Driver](https://github.com/datastax/cpp-driver), version 2.2.1.
 * Tango Controls 9.2.5a.
 * omniORB release 4 - libomniorb4 and libomnithread
@@ -37,7 +37,7 @@ There is also a debian stretch package available to install this [here](https://
 
 #### Datastax CPP Driver Release 2.2.1 Debian Package
 
-It is possible to take a version 2.2.1 cpp-driver debian package we have made available [here](https://bintray.com/tango-controls/debian/cassandra-cpp-driver) on bintray. This has its dependencies set correctly for libuv1. This option is only avilable on debian stretch.
+It is possible to take a version 2.2.1 cpp-driver debian package we have made available [here](https://bintray.com/tango-controls-hdbpp/debian/cassandra-cpp-driver) on bintray. This has its dependencies set correctly for libuv1. This option is only avilable on debian stretch.
 
 ## Standard flags
 
@@ -94,7 +94,7 @@ cmake -DCMAKE_INCLUDE_PATH=/usr/include/tango ..
 First clone the repository:
 
 ```
-git clone http://github.com/tango-controls/libhdbpp-cassandra.git
+git clone http://github.com/tango-controls-hdbpp/libhdbpp-cassandra.git
 ```
 
 An out of source build is required by the CMakeLists file, so create a build directory to run CMake from:

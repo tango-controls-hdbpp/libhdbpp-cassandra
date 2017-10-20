@@ -1,6 +1,6 @@
 # Libhdbpp-Cassandra
 
-[HDB++](http://www.tango-controls.org/community/projects/hdbplus) library for Apache Cassandra backend. This library is loaded by [Libhdbpp](https://github.com/tango-controls/libhdbpp) to archive events from a Tango Controls system.
+[HDB++](http://www.tango-controls.org/community/projects/hdbplus) library for Apache Cassandra backend. This library is loaded by [Libhdbpp](https://github.com/tango-controls-hdbpp/libhdbpp) to archive events from a Tango Controls system.
 
 ## Version
 
@@ -10,12 +10,12 @@ The current release version is 0.10.0.
 
 This release version of the library has made a few changes to standardize its use and deployment.
 * The build system has been moved to CMake. Details on building it using CMake are below.
-* The main tango.h include has been changed from `include <tango.h>` to `include <tango/tango.h>` and `include "LibHdb++.h"` to `include "libhdb++/LibHdb++.h"`. This reflects the standard install path of the headers and is more consistent with header include patterns. What this means for building the library is we no longer need to specify the tango/libhdbpp install paths if these have been installed in a standard way. If its installed non-standard, then standard CMake flags can used to specify the include and library location (See the [INSTALL.md](https://github.com/tango-controls/libhdbpp/blob/master/INSTALL.md))
+* The main tango.h include has been changed from `include <tango.h>` to `include <tango/tango.h>` and `include "LibHdb++.h"` to `include "libhdb++/LibHdb++.h"`. This reflects the standard install path of the headers and is more consistent with header include patterns. What this means for building the library is we no longer need to specify the tango/libhdbpp install paths if these have been installed in a standard way. If its installed non-standard, then standard CMake flags can used to specify the include and library location (See the [INSTALL.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/INSTALL.md))
 
 ## Documentation
 
 * See the tango documentation [here](http://tango-controls.readthedocs.io/en/latest/administration/services/hdbpp/index.html#hdb-an-archiving-historian-service) for broader information about the HB++ archiving system and its integration into Tango Controls
-* Libhdbpp-Cassandra [CHANGELOG.md](https://github.com/tango-controls/libhdbpp/blob/master/CHANGELOG.md) contains the latest changes both released and in development.
+* Libhdbpp-Cassandra [CHANGELOG.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/CHANGELOG.md) contains the latest changes both released and in development.
 
 ## Bugs Reports
 
@@ -25,13 +25,13 @@ Pleae file bug reports above in the issues section.
 
 To compile this library, you will need to download and install the [DataStax Cassandra C++ Driver](https://github.com/datastax/cpp-driver). The Datastax Cassandra C++ Driver depends on [Libuv](https://github.com/libuv/libuv) and this will need installing also.
 
-See the [INSTALL.md](https://github.com/tango-controls/libhdbpp-cassandra/blob/master/INSTALL.md) file for  detailed instructions on how to build and install libhdbpp-cassandra.
+See the [INSTALL.md](https://github.com/tango-controls-hdbpp/libhdbpp-cassandra/blob/master/INSTALL.md) file for  detailed instructions on how to build and install libhdbpp-cassandra.
 
 ## Running Tests
 
 The library is now partially covered with unit tests built on the Catch Unit Test framework. These are still under active development. The unit test binary is output to the bin directory.
 
-To run all the tests a running cassandra node is required to test against. See the [INSTALL.md](https://github.com/tango-controls/libhdbpp/blob/master/INSTALL.md) for the flags to build the unit tests. Once built, they can be run from the command line as follows. 
+To run all the tests a running cassandra node is required to test against. See the [INSTALL.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/INSTALL.md) for the flags to build the unit tests. Once built, they can be run from the command line as follows. 
 
 ```bash
 ./bin/unit-tests
