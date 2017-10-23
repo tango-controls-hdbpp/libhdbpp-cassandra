@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * Prepared statements implemented along with a string cache for the queries. This will speed up many repeated database calls.
 * Tango Events are now bound in a separate templated class to improve maintainability and reduce repeated code.
 * More unit tests and a mean to test database based calls via a simple ad hoc connection to a cassandra database. This infrastructure can open a connection to a cassandra cluster and prime the database ready for use with the create_hdb_cassandra.cql file.
-* Lots more cleaning and documenting the code, such as todoś now showing up in the doxygen documents.
+* Lots more cleaning and documenting the code, such as todos now showing up in the doxygen documents.
 
 ## [0.10.0] - 2017-09-13
 

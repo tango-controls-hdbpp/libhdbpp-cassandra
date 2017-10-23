@@ -14,17 +14,17 @@ function(append_path_if_set VAR_NAME INCLUDE_LIST LIBRARY_LIST)
 
     # Variable set locally or via the command line
     if(${VAR_NAME})
-	    message(STATUS ${VAR_NAME} " set via command line to: " ${${VAR_NAME}})
-	    set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "${${VAR_NAME}}/include" PARENT_SCOPE)
-    	set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "${${VAR_NAME}}/lib" PARENT_SCOPE)
+        message(STATUS ${VAR_NAME} " set via command line to: " ${${VAR_NAME}})
+        set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "${${VAR_NAME}}/include" PARENT_SCOPE)
+        set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "${${VAR_NAME}}/lib" PARENT_SCOPE)
     else()
         set(${VAR_NAME} $ENV{${VAR_NAME}} )
 
-	    # Variable may be set in the environment
+        # Variable may be set in the environment
         if(${VAR_NAME})
             message(STATUS ${VAR_NAME} " set via env to: " ${${VAR_NAME}})
             set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "$ENV{${VAR_NAME}}/include" PARENT_SCOPE)
-	        set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "$ENV{${VAR_NAME}}/lib" PARENT_SCOPE)
+            set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "$ENV{${VAR_NAME}}/lib" PARENT_SCOPE)
         endif()
     endif()
 endfunction()
@@ -166,7 +166,7 @@ if(HDBPP_CASS_BUILD_SHARED)
 
     # Setting the target includes will allow us to link to this shared
     # library via the cmake project and not require us to include all
-    # its depenencies
+    # its dependencies
     target_include_directories(shared_library 
         PUBLIC ${INCLUDE_PATHS}
         PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src

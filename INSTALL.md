@@ -7,9 +7,9 @@ Ensure the development version of the dependencies are installed. These are as f
 
 * [libhdbpp](https://github.com/tango-controls-hdbpp/libhdbpp) - (libhdb++6). Build and install according its instructions.
 * [Datastax CPP Driver](https://github.com/datastax/cpp-driver), version 2.2.1.
-* Tango Controls 9.2.5a.
-* omniORB release 4 - libomniorb4 and libomnithread
-* libzmq - libzmq3-dev or libzmq5-dev
+* Tango Controls 9 or higher.
+* omniORB release 4 - libomniorb4 and libomnithread.
+* libzmq - libzmq3-dev or libzmq5-dev.
 
 If they have not been installed in a standard location, then use standard CMake flags below to inform the build where to search for them.
 
@@ -21,7 +21,7 @@ Toolchain dependencies:
 
 ### Datastax CPP Driver
 
-Download the [DataStax Cassandra C++ Driver](https://github.com/datastax/cpp-driver) from github and install. This is dependent on having [Libuv](https://github.com/libuv/libuv_) built and installed on the system. Datastax provide detailed [instructions](http://datastax.github.io/cpp-driver/topics/building/) to build the C++ Driver.
+Download the [DataStax Cassandra C++ Driver](https://github.com/datastax/cpp-driver) from github and install. This is dependent on having [Libuv](https://github.com/libuv/libuv) built and installed on the system. Datastax provides detailed [instructions](http://datastax.github.io/cpp-driver/topics/building/) to build the C++ Driver.
 
 Libhdbpp-Cassandra was developed on a debian system, so both libuv and the Datastax C++ Driver were installed from source. If you build and use libuv from a custom location (e.g. local test build environment,then you will need to inform the C++ Driver CMake build system where to search, example:
 
@@ -37,7 +37,7 @@ There is also a debian stretch package available to install this [here](https://
 
 #### Datastax CPP Driver Release 2.2.1 Debian Package
 
-It is possible to take a version 2.2.1 cpp-driver debian package we have made available [here](https://bintray.com/tango-controls-hdbpp/debian/cassandra-cpp-driver) on bintray. This has its dependencies set correctly for libuv1. This option is only avilable on debian stretch.
+It is possible to take a version 2.2.1 cpp-driver debian package we have made available [here](https://bintray.com/tango-controls/debian/cassandra-cpp-driver) on bintray. This has its dependencies set correctly for libuv1. This option is only avilable on debian stretch.
 
 ## Standard flags
 

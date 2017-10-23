@@ -1,8 +1,8 @@
 Source: libhdb++cassandra
-Priority: optionall
+Priority: optional
 Maintainer: Stuart James <stuart.james@esrf.fr>
 Build-Depends: libhdb++6-dev,
-               libtango-dev (=9.2.5a+dfsg1-2),  
+               libtango-dev,  
                libomnithread3-dev, 
                libomniorb4-dev, 
                dh-exec, 
@@ -20,12 +20,12 @@ Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
 Depends: libhdb++6,
-         libtango9 (=9.2.5a+dfsg1-2), 
+         libtango9, 
          libomniorb4-1, 
          libomnithread3c2, 
          ${shlibs:Depends}, 
          ${misc:Depends}
-Description: Tango Controls library to archive events into a Cassdandra database.
+Description: Tango Controls library to archive events into a Cassandra database.
  Loaded by the generic frontend libhdb++ to archive Tango events into a 
  Cassandra database. This shared library is configurable via its constructor. 
  It is designed to be used with Configuration Manager (hdbpp-cm) and Event 

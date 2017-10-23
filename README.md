@@ -10,7 +10,7 @@ The current release version is 0.10.0.
 
 This release version of the library has made a few changes to standardize its use and deployment.
 * The build system has been moved to CMake. Details on building it using CMake are below.
-* The main tango.h include has been changed from `include <tango.h>` to `include <tango/tango.h>` and `include "LibHdb++.h"` to `include "libhdb++/LibHdb++.h"`. This reflects the standard install path of the headers and is more consistent with header include patterns. What this means for building the library is we no longer need to specify the tango/libhdbpp install paths if these have been installed in a standard way. If its installed non-standard, then standard CMake flags can used to specify the include and library location (See the [INSTALL.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/INSTALL.md))
+* The include file LibHdb++.h has changed from `include "LibHdb++.h"` to `include "libhdb++/LibHdb++.h"`. This reflects the standard install path of the headers. If building against [libhdbpp](https://github.com/tango-controls-hdbpp/libhdbpp) from a standard system install, then this change makes no difference. If libhdbpp is installed to a custom location, ensure you add the path to the CMAKE_INCLUDE_PATH.
 
 ## Documentation
 
@@ -19,7 +19,7 @@ This release version of the library has made a few changes to standardize its us
 
 ## Bugs Reports
 
-Pleae file bug reports above in the issues section.
+Please file bug reports above in the issues section.
 
 ## Building and Installation
 
@@ -51,13 +51,13 @@ Or:
 
 To see more options for the unit-test command line binary:
 
-```ash
+```bash
 ./bin/unit-tests --help
 ```
 
 ## Compatibility
 
-The library has been build and tested against certain versions of its dependencies. While it may be possible to run with newer versions, this is not supported currently since there may unknown compatibility problems. As newer versions are tested they will be added to the matrix below.
+The library has been built and tested against certain versions of its dependencies. While it may be possible to run with newer versions, this is not supported currently since there may be unknown compatibility problems. As newer versions are tested they will be added to the matrix below.
 
 The compatibility matrix with dependencies is as follows:
 
