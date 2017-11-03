@@ -97,6 +97,8 @@ endforeach()
 
 message(STATUS "Building library paths...")
 
+set(LIBRARY_PATHS ${LIBRARY_PATHS} ${CMAKE_LIBRARY_PATH})
+
 foreach(LIB_PATH ${CMAKE_LIBRARY_PATH})
     message(STATUS "Extra library search path: " ${LIB_PATH})
 endforeach()
