@@ -1,0 +1,34 @@
+Source: libhdb++cassandra
+Priority: optional
+Maintainer: Stuart James <stuart.james@esrf.fr>
+Build-Depends: libhdb++6-dev,
+               libtango-dev,  
+               libomnithread3-dev, 
+               libomniorb4-dev, 
+               dh-exec, 
+               debhelper (>= 9.0.0), 
+               cmake (>= 3.0.0), 
+               make
+Standards-Version: 3.9.8
+Section: libs
+Homepage: https://github.com/tango-controls-hdbpp/libhdbpp-cassandra
+
+Package: libhdb++cassandra7
+Priority: optional
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: libhdb++6,
+         libtango9, 
+         libomniorb4-1, 
+         libomnithread3c2, 
+         ${shlibs:Depends}, 
+         ${misc:Depends}
+Description: Tango Controls library to archive events into a Cassandra database.
+ Loaded by the generic frontend libhdb++ to archive Tango events into a 
+ Cassandra database. This shared library is configurable via its constructor. 
+ It is designed to be used with Configuration Manager (hdbpp-cm) and Event 
+ Subscriber (hdbpp-es) device servers. The package includes one
+ cql file to assist the user in setting up the Cassandra database table. 
+ These are available under /usr/share/libhdb++cassandra
