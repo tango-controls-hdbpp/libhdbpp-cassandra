@@ -75,6 +75,7 @@ private:
     CassSession *mp_session;
     string m_keyspace_name;
     CassLogLevel cassandra_logging_level;
+    CassConsistency consistency;
 
 public:
     /**
@@ -96,6 +97,19 @@ public:
      *       Cassandra cluster. Tip: include more than one contact point to be robust
      *       against node failures.
      *     - keyspace: Keyspace to use within the cluster, eg, hdb_test
+     *     - consistency: Determin the number of replicas on which the read/write must 
+     *       respond/succeed before acknowledgement. This must be one of the follow values:
+     *          - ALL: Equivalent CASS_CONSISTENCY_ALL
+     *          - EACH_QUORUM : Equivalent CASS_CONSISTENCY_EACH_QUORUM
+     *          - QUORUM : Equivalent CASS_CONSISTENCY_QUORUM
+     *          - LOCAL_QUORUM : Equivalent CASS_CONSISTENCY_LOCAL_QUORUM
+     *          - ONE : Equivalent CASS_CONSISTENCY_ONE
+     *          - TWO : Equivalent CASS_CONSISTENCY_TWO
+     *          - THREE : Equivalent CASS_CONSISTENCY_THREE
+     *          - LOCAL_ONE : Equivalent CASS_CONSISTENCY_LOCAL_ONE
+     *          - ANY : Equivalent CASS_CONSISTENCY_ANY
+     *          - SERIAL : Equivalent CASS_CONSISTENCY_SERIAL
+     *          - LOCAL_SERIAL : Equivalent CASS_CONSISTENCY_LOCAL_SERIAL
      * - Optional:
      *      - user: Cluster log in user name
      *      - password: Password for above user name
@@ -105,8 +119,7 @@ public:
      * - Debug:
      *     - logging_enabled: Either true to enable command line debug, or false to disable
      *     - cassandra_driver_log_level:  Cassandra logging level, see CassLogLevel in Datastax
-     * documentation. This
-     *       must be one of the follow values:
+     *       documentation. This must be one of the follow values:
      *          - TRACE: Equivalent CASS_LOG_TRACE
      *          - DEBUG: Equivalent CASS_LOG_DEBUG
      *          - INFO: Equivalent CASS_LOG_INFO
@@ -320,6 +333,8 @@ private:
 
     void update_ttl(unsigned int ttl, AttributeName &attr_name);
 
+    std::string get_config_param(const std::map<std::string, std::string> &conf, std::string param, bool mandatory);
+    void set_cassandra_consistency_level(std::string consistency_level);
     void set_cassandra_logging_level(string level);
     CassError execute_statement(CassStatement *statement);
     void throw_execute_exception(string message, string query, CassError error, const char *origin);
