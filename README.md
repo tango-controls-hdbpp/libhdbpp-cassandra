@@ -7,7 +7,7 @@
 
 ## Version
 
-The current release version is 0.10.0.
+The current release version is 0.11.0.
 
 ### **Important Changes** 0.9.1 -> 0.10.0
 
@@ -66,6 +66,7 @@ The compatibility matrix with dependencies is as follows:
 
 | Libhdbpp-Cassandra Version | Cassandra Version | Datastax C++ Driver | Libuv |
 |---------|-------------------|------------|-------|
+| 0.11.0 | 2.2.9 | 2.2.1 | 1.4.2 |
 | 0.10.0 | 2.2.9 | 2.2.1 | 1.4.2 |
 
 Soname version mapping to libhdbpp.so:

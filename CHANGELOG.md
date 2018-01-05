@@ -12,6 +12,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 * More unit tests and a mean to test database based calls via a simple ad hoc connection to a cassandra database. This infrastructure can open a connection to a cassandra cluster and prime the database ready for use with the create_hdb_cassandra.cql file.
 * Lots more cleaning and documenting the code, such as todos now showing up in the doxygen documents.
 
+## [0.11.0] - 2018-01-05
+
+### Added 
+
+* Consistency configuration parameter added to the library.
+
+### Changed
+
+* Refactor large HdbPPCassandra constructor.
+
 ## [0.10.0] - 2017-09-13
 
 ### Added
