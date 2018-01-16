@@ -18,6 +18,7 @@ The library can be built with Tango Controls install via debian package or sourc
 Toolchain dependencies:
 
 * CMake 3.0.0 or greater is required to perform the build.
+* CMake 3.0.2 or greater is required to build the unit tests.
 
 ### Datastax CPP Driver
 
@@ -50,6 +51,7 @@ The build system is CMake therefore standard CMake flags can be used to influenc
 | HDBPP_CASS_BUILD_TESTS | OFF | Build unit tests |
 | HDBPP_CASS_DEV_INSTALL | OFF | Install development files and libraries |
 | HDBPP_CASS_INSTALL_SCRIPTS | OFF | Install cql script to /usr/share/libdhb++cassandra |
+| HDBPP_CASS_ADDITIONAL_LIBS | | Cludge to allow additional libraries to be linked against the shared library |
 
 The following is a list of common useful CMake flags and their use:
 
@@ -76,8 +78,8 @@ For convenience there also exists five path flags to define the install location
 Note: to pass multiple paths (i.e. a string list to cmake), either an escaped semi colon must be used, or the list must be enclosed in quotes. Examples: 
 
 * `-DCMAKE_INCLUDE_PATH=/here/there\;/some/where/else`
-* `"-DCMAKE_INCLUDE_PATH=/here/there;/some/where/else"`
-* `'-DCMAKE_INCLUDE_PATH=/here/tehre;/some/where/else'`
+* `-DCMAKE_INCLUDE_PATH="/here/there;/some/where/else"`
+* `-DCMAKE_INCLUDE_PATH='/here/tehre;/some/where/else'`
 
 ## Building
 

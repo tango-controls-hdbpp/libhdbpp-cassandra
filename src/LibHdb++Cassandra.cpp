@@ -92,7 +92,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     // ---- contact_points mandatory config parameter ----
     auto contact_points = get_config_param(libhdb_conf, "contact_points", true);
 
-    // ---- contact_points mandatory config parameter ----
+    // ---- keyspace mandatory config parameter ----
     m_keyspace_name = get_config_param(libhdb_conf, "keyspace", true);
 
     mp_cluster = cass_cluster_new();

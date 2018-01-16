@@ -97,8 +97,8 @@ public:
      *       Cassandra cluster. Tip: include more than one contact point to be robust
      *       against node failures.
      *     - keyspace: Keyspace to use within the cluster, eg, hdb_test
-     *     - consistency: Determin the number of replicas on which the read/write must 
-     *       respond/succeed before acknowledgement. This must be one of the follow values:
+     *     - consistency: Determine the number of replicas on which the read/write must 
+     *       respond/succeed before acknowledgement. This must be one of the following values:
      *          - ALL: Equivalent CASS_CONSISTENCY_ALL
      *          - EACH_QUORUM : Equivalent CASS_CONSISTENCY_EACH_QUORUM
      *          - QUORUM : Equivalent CASS_CONSISTENCY_QUORUM
@@ -119,7 +119,7 @@ public:
      * - Debug:
      *     - logging_enabled: Either true to enable command line debug, or false to disable
      *     - cassandra_driver_log_level:  Cassandra logging level, see CassLogLevel in Datastax
-     *       documentation. This must be one of the follow values:
+     *       documentation. This must be one of the following values:
      *          - TRACE: Equivalent CASS_LOG_TRACE
      *          - DEBUG: Equivalent CASS_LOG_DEBUG
      *          - INFO: Equivalent CASS_LOG_INFO
