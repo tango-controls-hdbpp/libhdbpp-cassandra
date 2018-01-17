@@ -17,8 +17,7 @@ The library can be built with Tango Controls install via debian package or sourc
 
 Toolchain dependencies:
 
-* CMake 3.0.0 or greater is required to perform the build.
-* CMake 3.0.2 or greater is required to build the unit tests.
+* CMake 3.0.2 or greater is required to build the shared library and unit tests.
 
 ### Datastax CPP Driver
 
@@ -40,7 +39,7 @@ There is also a debian stretch package available to install this [here](https://
 
 It is possible to take a version 2.2.1 cpp-driver debian package we have made available [here](https://bintray.com/tango-controls/debian/cassandra-cpp-driver) on bintray. This has its dependencies set correctly for libuv1. This option is only avilable on debian stretch.
 
-## Standard flags
+## Build flags
 
 The build system is CMake therefore standard CMake flags can be used to influence the build and installation process. Several custom flags are defined to build the correct library. They are:
 
@@ -72,6 +71,33 @@ For convenience there also exists five path flags to define the install location
 | HDBPP_CASS_CPP_INSTALL_DRIVER_DIR | Install root for the Datastax CPP Driver | 
 | HDBPP_CASS_LIBHDBPP_INSTALL_DIR | Install root for Libhdbpp |
 | HDBPP_CASS_ZMQ_INSTALL_DIR | Install root for libzmq |
+
+### Unit Tests Build Flags
+
+The unit tests rely on the tango.pc file. If you have tango installed in a non-standard location, then pkg-config will need a search path for its search. There is two choices. 
+
+#### CMake Versions Older Than 3.1.0 
+
+Older CMake versions do not support adding a prefix to the pkg-config search path. Therefor the PKG_CONFIG_PATH must be set either as:
+
+```
+export PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkconfig
+cmake ..
+```
+
+Or as a temporary environment variable:
+
+```
+PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkconfig cmake ..
+```
+
+#### CMake Version 3.1.0 Or Newer
+
+We can use the same as above, or use CMAKE_PREFIX_PATH to append a search path. IMPORTANT: this is a prefix (eg, such as /usr), not the entire path, example:
+
+```
+cmake -DCMAKE_PREFIX_PATH/some/other/place ..
+```
 
 ### Passing CMake Lists
 

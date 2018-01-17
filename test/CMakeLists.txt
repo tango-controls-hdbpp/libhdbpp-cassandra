@@ -3,10 +3,16 @@ project(unit-tests)
 
 message(STATUS "Search for TANGO package config...")
 
-message(STATUS $ENV{PKG_CONFIG_PATH})
+# When using CMAKE 3.1.0 or greater, we can use the CMAKE_PREFIX_PATH as 
+# a search path for the tango.pc pkgconfig file. On older versions, the
+# PKG_CONFIG_PATH has to be set before the build
+if((${CMAKE_VERSION} VERSION_EQUAL "3.1.0") OR (${CMAKE_VERSION} VERSION_GREATER "3.1.0"))
+    set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
+    list(APPEND CMAKE_PREFIX_PATH "/usr")
+endif()
 
 # Unlike the shared library, the unit test binary requires full linkage
-# with Tango. To faciliate this, 
+# with Tango. To faciliate this we use pkgconfig
 find_package(PkgConfig REQUIRED)
 pkg_search_module(TANGO REQUIRED tango)
 
@@ -14,10 +20,9 @@ if(TANGO_FOUND)
     message(STATUS "Found tango version ${TANGO_VERSION} at ${TANGO_PREFIX}")
 endif(TANGO_FOUND)
 
-set(UNIT_TEST_LIBRARIES ${UNIT_TEST_LIBRARIES} ${TANGO_LIBRARIES})
-set(UNIT_TEST_INCLUDE_PATHS ${UNIT_TEST_INCLUDE_PATHS} ${TANGO_INCLUDE_DIRS})
-set(UNIT_TEST_INCLUDE_PATHS ${UNIT_TEST_INCLUDE_PATHS} ${TANGO_INCLUDEDIR})
-set(UNIT_TEST_LIBRARY_PATHS ${UNIT_TEST_LIBRARY_PATHS} ${TANGO_LIBDIR})
+list(APPEND UNIT_TEST_LIBRARIES ${TANGO_LIBRARIES})
+list(APPEND UNIT_TEST_INCLUDE_PATHS ${TANGO_INCLUDE_DIRS})
+list(APPEND UNIT_TEST_LIBRARY_PATHS ${TANGO_LIBDIR})
 
 # Now load the libraries and check each is found, if not
 # this is an error condition, so halt the cmake config
@@ -52,4 +57,3 @@ add_executable(unit-tests ${TEST_SOURCES})
 target_link_libraries(unit-tests PRIVATE catch_library static_library ${UNIT_TEST_FOUND_LIBS})
 target_include_directories(unit-tests PRIVATE ${UNIT_TEST_INCLUDE_PATHS})
 target_compile_options(unit-tests PRIVATE ${TANGO_CFLAGS_OTHER})
-set_target_properties(unit-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/../bin")

@@ -15,16 +15,16 @@ function(append_path_if_set VAR_NAME INCLUDE_LIST LIBRARY_LIST)
     # Variable set locally or via the command line
     if(${VAR_NAME})
         message(STATUS ${VAR_NAME} " set via command line to: " ${${VAR_NAME}})
-        set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "${${VAR_NAME}}/include" PARENT_SCOPE)
-        set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "${${VAR_NAME}}/lib" PARENT_SCOPE)
+        list(APPEND ${INCLUDE_LIST} "${${VAR_NAME}}/include" PARENT_SCOPE)
+        list(APPEND ${LIBRARY_LIST} "${${VAR_NAME}}/lib" PARENT_SCOPE)        
     else()
         set(${VAR_NAME} $ENV{${VAR_NAME}} )
 
         # Variable may be set in the environment
         if(${VAR_NAME})
             message(STATUS ${VAR_NAME} " set via env to: " ${${VAR_NAME}})
-            set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "$ENV{${VAR_NAME}}/include" PARENT_SCOPE)
-            set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "$ENV{${VAR_NAME}}/lib" PARENT_SCOPE)
+            list(APPEND ${INCLUDE_LIST} "$ENV{${VAR_NAME}}/include" PARENT_SCOPE)
+            list(APPEND ${LIBRARY_LIST} "$ENV{${VAR_NAME}}/lib" PARENT_SCOPE)            
         endif()
     endif()
 endfunction()
@@ -71,12 +71,6 @@ endif(NOT HDBPP_CASS_BUILD_SHARED AND NOT HDBPP_CASS_BUILD_STATIC)
 # arch install definitions
 include(GNUInstallDirs)
 
-# Configure the compiler flags here
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall")
-
-# Warn on any unresolved symbols in the shared library 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
-
 # set up a configuration file to pass variables into the build
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/LibHdb++CassandraConfig.h.in"
@@ -85,7 +79,7 @@ configure_file(
 message(STATUS "Building include paths...")
 
 # Add any include paths from the command line
-set(HDBPP_CASS_INCLUDE_PATHS ${HDBPP_CASS_INCLUDE_PATHS} ${CMAKE_INCLUDE_PATH})
+list(APPEND HDBPP_CASS_INCLUDE_PATHS ${CMAKE_INCLUDE_PATH})
 
 foreach(INC_PATH ${CMAKE_INCLUDE_PATH})
     message(STATUS "Extra include path: " ${INC_PATH})
@@ -93,7 +87,7 @@ endforeach()
 
 message(STATUS "Building library paths...")
 
-set(HDBPP_CASS_LIBRARY_PATHS ${HDBPP_CASS_LIBRARY_PATHS} ${CMAKE_LIBRARY_PATH})
+list(APPEND HDBPP_CASS_LIBRARY_PATHS ${CMAKE_LIBRARY_PATH})
 
 foreach(LIB_PATH ${CMAKE_LIBRARY_PATH})
     message(STATUS "Extra library search path: " ${LIB_PATH})
@@ -110,7 +104,7 @@ append_path_if_set(HDBPP_CASS_ZMQ_INSTALL_DIR HDBPP_CASS_INCLUDE_PATHS HDBPP_CAS
 message(STATUS "Searching for libraries...")
 
 # Variable to contain a list of all the libs we depend on
-set(LIBRARIES
+set(HDBPP_CASS_LIBRARIES
     libcassandra.so
     libtango.so
     libomnithread.so
@@ -118,7 +112,7 @@ set(LIBRARIES
 
 # Now load the libraries and check each is found, if not
 # this is an error condition, so halt the cmake config
-foreach(LIB ${LIBRARIES})
+foreach(LIB ${HDBPP_CASS_LIBRARIES})
     # try the user provided paths first
     find_library(FOUND_LIB_${LIB} ${LIB} PATHS ${HDBPP_CASS_LIBRARY_PATHS} NO_DEFAULT_PATH)
 
@@ -173,9 +167,7 @@ if(HDBPP_CASS_BUILD_SHARED)
     # library via the cmake project and not require us to include all
     # its dependencies
     target_include_directories(shared_library 
-        PUBLIC ${HDBPP_CASS_INCLUDE_PATHS}
-        PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src
-        PUBLIC "${PROJECT_BINARY_DIR}")
+        PUBLIC ${HDBPP_CASS_INCLUDE_PATHS} ${CMAKE_CURRENT_LIST_DIR}/src "${PROJECT_BINARY_DIR}")
 
     # This will version the shared library
     set_target_properties(shared_library
@@ -191,9 +183,8 @@ if(HDBPP_CASS_BUILD_STATIC)
     # Like the shared project, define dependencies, the static library is
     # used in the tests and requires no additional includes due to this
     target_include_directories(static_library 
-        PUBLIC ${HDBPP_CASS_INCLUDE_PATHS}
-        PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src
-        PUBLIC "${PROJECT_BINARY_DIR}")    
+        PUBLIC ${HDBPP_CASS_INCLUDE_PATHS} ${CMAKE_CURRENT_LIST_DIR}/src "${PROJECT_BINARY_DIR}")
+
 endif(HDBPP_CASS_BUILD_STATIC)
 
 # Install Config -----------------------------------
