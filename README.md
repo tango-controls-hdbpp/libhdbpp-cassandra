@@ -72,7 +72,7 @@ The library has been built and tested against certain versions of its dependenci
 
 The compatibility matrix with dependencies is as follows:
 
-| Libhdbpp-Cassandra Version | Libray Soname | Cassandra Version | Datastax C++ Driver | Libuv |
+| Libhdbpp-Cassandra Version | Library Soname | Cassandra Version | Datastax C++ Driver | Libuv |
 |----------------------------|---------------|-------------------|---------------------|-------|
 | 0.11.0 | 7.1.0 | 2.2.11 | 2.2.1 | 1.4.2 |
 | 0.10.0 | 7.0.0 | 2.2.9 | 2.2.1 | 1.4.2 |
