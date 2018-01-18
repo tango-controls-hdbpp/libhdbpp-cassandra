@@ -18,7 +18,15 @@ This release version of the library has made a few changes to standardize its us
 ## Documentation
 
 * See the tango documentation [here](http://tango-controls.readthedocs.io/en/latest/administration/services/hdbpp/index.html#hdb-an-archiving-historian-service) for broader information about the HB++ archiving system and its integration into Tango Controls
-* Libhdbpp-Cassandra [CHANGELOG.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/CHANGELOG.md) contains the latest changes both released and in development.
+- [Libhdbpp-Cassandra](#libhdbpp-cassandra)
+    - [Version](#version)
+        - [**Important Changes** 0.9.1 -> 0.10.0](#important-changes-091---0100)
+    - [Documentation](#documentation)
+    - [Bugs Reports](#bugs-reports)
+    - [Building and Installation](#building-and-installation)
+    - [Running Tests](#running-tests)
+    - [Compatibility](#compatibility)
+    - [License](#license)
 
 ## Bugs Reports
 
@@ -64,10 +72,10 @@ The library has been built and tested against certain versions of its dependenci
 
 The compatibility matrix with dependencies is as follows:
 
-| Libhdbpp-Cassandra Version | Cassandra Version | Datastax C++ Driver | Libuv |
-|---------|-------------------|------------|-------|
-| 0.11.0 | 2.2.9 | 2.2.1 | 1.4.2 |
-| 0.10.0 | 2.2.9 | 2.2.1 | 1.4.2 |
+| Libhdbpp-Cassandra Version | Libray Soname | Cassandra Version | Datastax C++ Driver | Libuv |
+|----------------------------|---------------|-------------------|---------------------|-------|
+| 0.11.0 | 7.1.0 | 2.2.11 | 2.2.1 | 1.4.2 |
+| 0.10.0 | 7.0.0 | 2.2.9 | 2.2.1 | 1.4.2 |
 
 Soname version mapping to libhdbpp.so:
 

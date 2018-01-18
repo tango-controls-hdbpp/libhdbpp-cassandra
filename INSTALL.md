@@ -78,17 +78,17 @@ The unit tests rely on the tango.pc file. If you have tango installed in a non-s
 
 #### CMake Versions Older Than 3.1.0 
 
-Older CMake versions do not support adding a prefix to the pkg-config search path. Therefor the PKG_CONFIG_PATH must be set either as:
+Older CMake versions do not support adding a prefix to the pkg-config search path. Therefore the PKG_CONFIG_PATH must be set either as:
 
 ```
-export PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkconfig
+export PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkgconfig
 cmake ..
 ```
 
 Or as a temporary environment variable:
 
 ```
-PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkconfig cmake ..
+PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkgconfig cmake ..
 ```
 
 #### CMake Version 3.1.0 Or Newer

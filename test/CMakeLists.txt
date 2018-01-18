@@ -12,7 +12,7 @@ if((${CMAKE_VERSION} VERSION_EQUAL "3.1.0") OR (${CMAKE_VERSION} VERSION_GREATER
 endif()
 
 # Unlike the shared library, the unit test binary requires full linkage
-# with Tango. To faciliate this we use pkgconfig
+# with Tango. To facilitate this we use pkgconfig
 find_package(PkgConfig REQUIRED)
 pkg_search_module(TANGO REQUIRED tango)
 

@@ -105,6 +105,7 @@ message(STATUS "Searching for libraries...")
 
 # Variable to contain a list of all the libs we depend on
 set(HDBPP_CASS_LIBRARIES
+    librt.so
     libcassandra.so
     libtango.so
     libomnithread.so
