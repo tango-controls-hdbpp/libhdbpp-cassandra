@@ -1,6 +1,22 @@
 
 # Building and Installation
 
+- [Building and Installation](#building-and-installation)
+    - [Dependencies](#dependencies)
+        - [Datastax CPP Driver](#datastax-cpp-driver)
+        - [Debian Stetch Packages](#debian-stetch-packages)
+            - [Libhdbpp Debian Package](#libhdbpp-debian-package)
+            - [Datastax CPP Driver Release 2.2.1 Debian Package](#datastax-cpp-driver-release-221-debian-package)
+    - [Build flags](#build-flags)
+        - [Unit Tests Build Flags](#unit-tests-build-flags)
+            - [CMake Versions Older Than 3.1.0](#cmake-versions-older-than-310)
+            - [CMake Version 3.1.0 Or Newer](#cmake-version-310-or-newer)
+        - [Passing CMake Lists](#passing-cmake-lists)
+    - [Building](#building)
+        - [Building Against Tango Controls 9.2.5a](#building-against-tango-controls-925a)
+        - [Example Build Sequence](#example-build-sequence)
+    - [Installation](#installation)
+
 ## Dependencies
 
 Ensure the development version of the dependencies are installed. These are as follows:
@@ -96,7 +112,7 @@ PKG_CONFIG_PATH=/segfs/tango/release/debian9/lib/pkgconfig cmake ..
 We can use the same as above, or use CMAKE_PREFIX_PATH to append a search path. IMPORTANT: this is a prefix (eg, such as /usr), not the entire path, example:
 
 ```
-cmake -DCMAKE_PREFIX_PATH/some/other/place ..
+cmake -DCMAKE_PREFIX_PATH=/some/other/place ..
 ```
 
 ### Passing CMake Lists
