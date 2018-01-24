@@ -14,7 +14,6 @@
    along with libhdb++cassandra.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "TangoEventDataBinder.h"
-#include "SimpleCassandraConnection.h"
 
 using namespace std;
 using namespace HDBPP;
