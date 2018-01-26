@@ -97,10 +97,10 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     auto contact_points = get_config_param(libhdb_conf, "contact_points", true);
 
     // ---- keyspace mandatory config parameter ----
-    m_keyspace_name = get_config_param(libhdb_conf, "keyspace", true);
+    _keyspace_name = get_config_param(libhdb_conf, "keyspace", true);
 
-    mp_cluster = cass_cluster_new();
-    cass_cluster_set_contact_points(mp_cluster, contact_points.c_str());
+    _cass_cluster = cass_cluster_new();
+    cass_cluster_set_contact_points(_cass_cluster, contact_points.c_str());
 
     if (user.empty() && password.empty())
     {
@@ -115,13 +115,13 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     }
     else
     {
-        cass_cluster_set_credentials(mp_cluster, user.c_str(), password.c_str());
+        cass_cluster_set_credentials(_cass_cluster, user.c_str(), password.c_str());
     }
 
     /* Latency-aware routing enabled with the default settings */
-    cass_cluster_set_latency_aware_routing(mp_cluster, cass_true);
+    cass_cluster_set_latency_aware_routing(_cass_cluster, cass_true);
 
-    cass_cluster_set_load_balance_dc_aware(mp_cluster, local_dc.c_str(), USED_HOSTS_PER_REMOTE_DC,
+    cass_cluster_set_load_balance_dc_aware(_cass_cluster, local_dc.c_str(), USED_HOSTS_PER_REMOTE_DC,
                                            ALLOW_REMOTE_DCS_FOR_LOCAL_CL);
 
     // connect to the cassandra session
@@ -134,18 +134,18 @@ HdbPPCassandra::~HdbPPCassandra()
 {
     TRACE_ENTER;
 
-    if (mp_cluster)
+    if (_cass_cluster)
     {
         // free up any used prepared statements
         _prepared_statements->free_cache();
         delete _prepared_statements;
 
         CassFuture *close_future = NULL;
-        close_future = cass_session_close(mp_session);
+        close_future = cass_session_close(_cass_session);
         cass_future_wait(close_future);
         cass_future_free(close_future);
-        cass_cluster_free(mp_cluster);
-        cass_session_free(mp_session);
+        cass_cluster_free(_cass_cluster);
+        cass_session_free(_cass_session);
     }
 
     TRACE_EXIT;
@@ -157,8 +157,8 @@ void HdbPPCassandra::connect_session()
 {
     TRACE_ENTER;
 
-    mp_session = cass_session_new();
-    CassFuture *future = cass_session_connect(mp_session, mp_cluster);
+    _cass_session = cass_session_new();
+    CassFuture *future = cass_session_connect(_cass_session, _cass_cluster);
     cass_future_wait(future);
 
     CassError rc = cass_future_error_code(future);
@@ -169,10 +169,10 @@ void HdbPPCassandra::connect_session()
         LOG(Error) << "Cassandra connect session error: " << cass_error_desc(rc) << endl;
         stringstream error_desc;
         error_desc << "Error connecting to the Cassandra Cluster: " << cass_error_desc(rc) << ends;
-        cass_cluster_free(mp_cluster);
-        cass_session_free(mp_session);
-        mp_cluster = NULL;
-        mp_session = NULL;
+        cass_cluster_free(_cass_cluster);
+        cass_session_free(_cass_session);
+        _cass_cluster = NULL;
+        _cass_session = NULL;
         Tango::Except::throw_exception(EXCEPTION_TYPE_CONNECTION, error_desc.str(), __func__);
     }
     else
@@ -181,83 +181,23 @@ void HdbPPCassandra::connect_session()
     }
 
     // create a prepared statement manager
-    _prepared_statements = new PreparedStatementCache(mp_session, m_keyspace_name);
+    _prepared_statements = new PreparedStatementCache(_cass_session, _keyspace_name);
 
     TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
-bool HdbPPCassandra::find_attr_id(AttributeName &attr_name, CassUuid &ID)
-{
-    TRACE_ENTER;
-
-    // First look into the cache
-    map<string, AttributeParams>::iterator it =
-        attribute_cache.find(attr_name.fully_qualified_attribute_name());
-
-    if (it == attribute_cache.end())
-    {
-        // if not already present in cache, look for ID in the DB
-        unsigned int ttl = 0;
-        if (!find_attr_id_and_ttl_in_db(attr_name, ID, ttl))
-        {
-            LOG(Debug) << "ID not found for attr=" << attr_name << endl;
-            TRACE_EXIT;
-            return false;
-        }
-    }
-    else
-    {
-        ID = it->second.id;
-    }
-
-    TRACE_EXIT;
-    return true;
-}
-
-//=============================================================================
-//=============================================================================
-bool HdbPPCassandra::find_attr_id_and_ttl(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl)
-{
-    TRACE_ENTER;
-
-    // First look into the cache
-    map<string, AttributeParams>::iterator it =
-        attribute_cache.find(attr_name.fully_qualified_attribute_name());
-
-    if (it == attribute_cache.end())
-    {
-        // if not already present in cache, look for ID in the DB
-        if (!find_attr_id_and_ttl_in_db(attr_name, ID, ttl))
-        {
-            LOG(Debug) << "ID not found for attr=" << attr_name << endl;
-            TRACE_EXIT;
-            return false;
-        }
-    }
-    else
-    {
-        ID = it->second.id;
-        ttl = it->second.ttl;
-    }
-
-    TRACE_EXIT;
-    return true;
-}
-
-//=============================================================================
-//=============================================================================
-bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl)
+bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &uuid, unsigned int &ttl)
 {
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdAndTtlInDb);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(), attr_name.full_attribute_name().c_str());
     cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
 
-    CassFuture *future = cass_session_execute(mp_session, statement);
+    CassFuture *future = cass_session_execute(_cass_session, statement);
     cass_future_wait(future);
     CassError rc = cass_future_error_code(future);
 
@@ -283,7 +223,7 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
                    << CONF_COL_FACILITY << "=\'" << attr_name.tango_host_with_domain() << "\')" << endl;
 
         const CassRow *row = cass_iterator_get_row(iterator);
-        cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
+        cass_value_get_uuid(cass_row_get_column(row, 0), &uuid);
         cass_int32_t ttl_val = 0;
 
         const CassValue *cass_ttl_val = cass_row_get_column_by_name(row, CONF_COL_TTL.c_str());
@@ -333,24 +273,17 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
             ttl = ttl_val;
         }
 
-        LOG(Debug) << "(" << attr_name << "): ID found " << endl;
+        LOG(Debug) << "(" << attr_name << "): uuid found " << endl;
         LOG(Debug) << "(" << attr_name << "): TTL = " << ttl << endl;
 
         found = true;
 
-        attribute_cache.insert(
-            make_pair(attr_name.fully_qualified_attribute_name(), AttributeParams(ID, ttl)));
-
-        map<string, AttributeParams>::iterator it =
-            attribute_cache.find(attr_name.fully_qualified_attribute_name());
-
-        if (it == attribute_cache.end())
-        {
+        if(!_attr_cache.cache_attribute(attr_name, uuid, ttl))
+        {   
+            // TODO This error needs to be handled better         
             char uuid_str[CASS_UUID_STRING_LENGTH];
-            cass_uuid_string(ID, uuid_str);
-
-            LOG(Error) << "ID (" << uuid_str
-                       << ") could not be added into cache for attr =" << attr_name << endl;
+            cass_uuid_string(uuid, uuid_str);
+            LOG(Error) << "uuid (" << uuid_str << ") could not be added into cache for attr =" << attr_name << endl;
         }
     }
 
@@ -377,11 +310,11 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdTypeAndTtlInDb);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),attr_name.full_attribute_name().c_str());
     cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),attr_name.tango_host_with_domain().c_str());
 
-    CassFuture *future = cass_session_execute(mp_session, statement);
+    CassFuture *future = cass_session_execute(_cass_session, statement);
     cass_future_wait(future);
     CassError rc = cass_future_error_code(future);
 
@@ -459,10 +392,10 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
     last_event = "??";
 
     CassStatement *statement = _prepared_statements->statement(Query::FindLastEvent);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), id);
 
-    CassFuture *future = cass_session_execute(mp_session, statement);
+    CassFuture *future = cass_session_execute(_cass_session, statement);
     cass_future_wait(future);
     CassError rc = cass_future_error_code(future);
 
@@ -581,20 +514,20 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
         ev_time_us = rcv_time_us;
     }
 
-    CassUuid id;
+    CassUuid uuid;
     unsigned int ttl = 0;
 
-    if (!find_attr_id_and_ttl(attr_name, id, ttl))
+    if (!_attr_cache.find_attr_uuid(attr_name, uuid) || !_attr_cache.find_attr_ttl(attr_name, ttl))
     {
-        LOG(Error) << "Could not find ID for attribute " << attr_name << endl;
         stringstream error_desc;
-        error_desc << "ERROR Could not find ID for attribute  \"" << attr_name << "\": " << ends;
+        error_desc << "ERROR Could not find uuid or ttl  for attribute  \"" << attr_name << "\": " << ends;
+        LOG(Error) << error_desc.str() << endl;
         Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
     }
 
     CassStatement *statement = _prepared_statements->statement(data_type, data_format, write_type);
-    cass_statement_set_consistency(statement, consistency);
-    cass_statement_bind_uuid_by_name(statement, SC_COL_ID.c_str(), id);
+    cass_statement_set_consistency(statement, _consistency);
+    cass_statement_bind_uuid_by_name(statement, SC_COL_ID.c_str(), uuid);
 
     // Compute the period based on the month of the event time
     struct tm *tms;
@@ -678,7 +611,7 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
     int current_time_us = ts.tv_nsec / 1000;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertHistoryEvent);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), att_conf_id);
     cass_statement_bind_string_by_name(statement, HISTORY_COL_EVENT.c_str(), history_event_name.c_str());
     cass_statement_bind_int64_by_name(statement, HISTORY_COL_TIME.c_str(), current_time);
@@ -722,11 +655,11 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
 
     CassUuid uuid;
 
-    if (!find_attr_id(attr_name, uuid))
+    if (!_attr_cache.find_attr_uuid(attr_name, uuid))
     {
-        LOG(Error) << "Could not find ID for attribute " << attr_name << endl;
         stringstream error_desc;
         error_desc << "ERROR Could not find ID for attribute  \"" << attr_name << "\": " << ends;
+        LOG(Error) << error_desc.str() << endl;
         Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
     }
     else
@@ -737,7 +670,7 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     }
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertParamAttribute);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_uuid_by_name(statement, PARAM_COL_ID.c_str(), uuid);
 
     // Get the current time
@@ -803,7 +736,7 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     cass_statement_bind_string_by_name(statement, PARAM_COL_DESCRIPTION.c_str(),
                                        data->attr_conf->description.c_str());
 
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
 
     CassError rc = execute_statement(statement);
 
@@ -913,7 +846,7 @@ void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl /* h
     AttributeName attr_name(fqdn_attr_name);
     CassUuid uuid;
 
-    if (!find_attr_id(attr_name, uuid))
+    if (!_attr_cache.find_attr_uuid(attr_name, uuid))
     {
         stringstream error_desc;
         error_desc << "ERROR Attribute " << attr_name << " NOT FOUND in HDB++ configuration table" << ends;
@@ -934,7 +867,7 @@ void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
     AttributeName attr_name(fqdn_attr_name);
     CassUuid uuid;
 
-    if (!find_attr_id(attr_name, uuid))
+    if (!_attr_cache.find_attr_uuid(attr_name, uuid))
     {
         stringstream error_desc;
         error_desc << "ERROR Attribute " << attr_name << " NOT FOUND in HDB++ configuration table" << ends;
@@ -1047,7 +980,7 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertAttributeConf);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
 
     CassUuidGen *uuid_gen = cass_uuid_gen_new();
     cass_uuid_gen_time(uuid_gen, &uuid);
@@ -1084,7 +1017,7 @@ void HdbPPCassandra::insert_domain(AttributeName &attr_name)
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertDomain);
-    cass_statement_set_consistency(statement, consistency);
+    cass_statement_set_consistency(statement, _consistency);
 
     cass_statement_bind_string_by_name(statement, DOMAINS_COL_FACILITY.c_str(),
                                        attr_name.tango_host_with_domain().c_str());
@@ -1215,15 +1148,7 @@ void HdbPPCassandra::update_ttl(unsigned int ttl, AttributeName &attr_name)
         throw_execute_exception("ERROR executing update tll query",
                                 _prepared_statements->query_id_to_str(Query::UpdateTtl), rc, __func__);
 
-    // Cassandra command was successfull, so update the ttl in the cache
-    map<string, AttributeParams>::iterator it =
-        attribute_cache.find(attr_name.fully_qualified_attribute_name());
-
-    if (it != attribute_cache.end())
-    {
-        it->second.ttl = ttl;
-    }
-    else
+    if (_attr_cache.update_attr_ttl(attr_name, ttl) == false)
     {
         // in this case, the ttl should exist, since the caller loaded the attribute
         // from the database if it was not loaded, this should have cached the ttl
@@ -1242,7 +1167,7 @@ CassError HdbPPCassandra::execute_statement(CassStatement *statement)
 {
     TRACE_ENTER;
 
-    CassFuture *future = cass_session_execute(mp_session, statement);
+    CassFuture *future = cass_session_execute(_cass_session, statement);
     cass_future_wait(future);
     CassError rc = cass_future_error_code(future);
 
@@ -1273,42 +1198,42 @@ void HdbPPCassandra::throw_execute_exception(string message, string query, CassE
 void HdbPPCassandra::set_cassandra_logging_level(string level)
 {
     if (level == "DISABLED")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_DISABLED);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_DISABLED);
 
     else if (level == "CRITICAL")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_CRITICAL);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_CRITICAL);
 
     else if (level == "ERROR")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_ERROR);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_ERROR);
 
     else if (level == "WARN")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_WARN);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_WARN);
 
     else if (level == "INFO")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_INFO);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_INFO);
 
     else if (level == "DEBUG")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_DEBUG);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_DEBUG);
 
     else if (level == "TRACE")
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_TRACE);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_TRACE);
 
     else
     {
-        cass_log_set_level(cassandra_logging_level = CASS_LOG_DISABLED);
+        cass_log_set_level(_cassandra_logging_level = CASS_LOG_DISABLED);
         LOG(Error) << "ERROR invalid cassandra driver logging level" << endl;
         LOG(Error) << "Log level set by default to: DISABLED" << endl;
     }
 
     LOG(Debug) << "Cassandra driver logging set to: ";
 
-    if (cassandra_logging_level == CASS_LOG_DISABLED)
+    if (_cassandra_logging_level == CASS_LOG_DISABLED)
     {
         LOG(Debug) << "DISABLED" << endl;
     }
     else
     {
-        LOG(Debug) << cass_log_level_string(cassandra_logging_level) << endl;
+        LOG(Debug) << cass_log_level_string(_cassandra_logging_level) << endl;
     }
 }
 
@@ -1317,27 +1242,27 @@ void HdbPPCassandra::set_cassandra_logging_level(string level)
 void HdbPPCassandra::set_cassandra_consistency_level(string consistency_level)
 {
     if(consistency_level == "ALL")
-        consistency = CASS_CONSISTENCY_ALL;
+        _consistency = CASS_CONSISTENCY_ALL;
     else if(consistency_level == "EACH_QUORUM")
-        consistency = CASS_CONSISTENCY_EACH_QUORUM;
+        _consistency = CASS_CONSISTENCY_EACH_QUORUM;
     else if(consistency_level == "QUORUM")
-        consistency = CASS_CONSISTENCY_QUORUM;
+        _consistency = CASS_CONSISTENCY_QUORUM;
     else if(consistency_level == "LOCAL_QUORUM")
-        consistency = CASS_CONSISTENCY_LOCAL_QUORUM;
+        _consistency = CASS_CONSISTENCY_LOCAL_QUORUM;
     else if(consistency_level == "ONE")
-        consistency = CASS_CONSISTENCY_ONE;
+        _consistency = CASS_CONSISTENCY_ONE;
     else if(consistency_level == "TWO")
-        consistency = CASS_CONSISTENCY_TWO;
+        _consistency = CASS_CONSISTENCY_TWO;
     else if(consistency_level == "THREE")
-        consistency = CASS_CONSISTENCY_THREE;
+        _consistency = CASS_CONSISTENCY_THREE;
     else if(consistency_level == "LOCAL_ONE")
-        consistency = CASS_CONSISTENCY_LOCAL_ONE;
+        _consistency = CASS_CONSISTENCY_LOCAL_ONE;
     else if(consistency_level == "ANY")
-        consistency = CASS_CONSISTENCY_ANY;
+        _consistency = CASS_CONSISTENCY_ANY;
     else if(consistency_level == "SERIAL")
-        consistency = CASS_CONSISTENCY_SERIAL;
+        _consistency = CASS_CONSISTENCY_SERIAL;
     else if(consistency_level == "LOCAL_SERIAL")
-        consistency = CASS_CONSISTENCY_LOCAL_SERIAL;
+        _consistency = CASS_CONSISTENCY_LOCAL_SERIAL;
     else
     {
         stringstream error_desc;

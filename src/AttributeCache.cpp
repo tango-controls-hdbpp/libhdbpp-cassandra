@@ -53,7 +53,7 @@ bool AttributeCache::find_attr_uuid(const AttributeName &attr_name, CassUuid &uu
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::find_attr_ttl(const AttributeName &attr_name, unsigned long &ttl)
+bool AttributeCache::find_attr_ttl(const AttributeName &attr_name, unsigned int &ttl)
 {
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
@@ -80,7 +80,7 @@ bool AttributeCache::find_attr_ttl(const AttributeName &attr_name, unsigned long
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned long new_ttl)
+bool AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl)
 {
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
@@ -107,7 +107,7 @@ bool AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned lo
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned long ttl)
+bool AttributeCache::cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl)
 {
     if (_attribute_cache.find(attr_name.fully_qualified_attribute_name()) == _attribute_cache.end())
     {

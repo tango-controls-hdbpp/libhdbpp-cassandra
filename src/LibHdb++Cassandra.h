@@ -21,6 +21,7 @@
 #define _HDBPP_CASSANDRA_H
 
 #include "AttributeName.h"
+#include "AttributeCache.h"
 #include <libhdb++/LibHdb++.h>
 
 #include <tango.h>
@@ -179,6 +180,7 @@ public:
     virtual void event_Attr(string fqdn_attr_name, unsigned char event);
 
 private:
+
     enum FindAttrResult
     {
         AttrNotFound,
@@ -198,8 +200,6 @@ private:
     void connect_session();
     string remove_domain(string facility);
 
-    bool find_attr_id(AttributeName &attr_name, CassUuid &ID);
-    bool find_attr_id_and_ttl(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
     bool find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
 
     FindAttrResult find_attr_id_type_and_ttl(AttributeName &attr_name,
@@ -227,23 +227,22 @@ private:
     void throw_execute_exception(string message, string query, CassError error, const char *origin);
     void string_vector2map(vector<string> str, string separator, map<string, string> *results);
 
-    // cache the attribute name to some of its often used data, i.e. ttl and id. This
-    // saves it being looked up in the database everytime we request it
-    map<string, AttributeParams> attribute_cache;
+    CassCluster *_cass_cluster;
+    CassSession *_cass_session;
+    CassLogLevel _cassandra_logging_level;
+    CassConsistency _consistency;
 
-    CassCluster *mp_cluster;
-    CassSession *mp_session;
-    CassLogLevel cassandra_logging_level;
-    CassConsistency consistency;
-
-    string m_keyspace_name;
+    string _keyspace_name;
 
     // used to flag up whether the library will store the diagnostic timestamps,
     // setting to false via the configuration will save database space
     bool _store_diag_times = false;
 
     // manage prepared statement objects
-    PreparedStatementCache *_prepared_statements;    
+    PreparedStatementCache *_prepared_statements;
+
+    // cache some details aout attributes, to save db lookup
+    AttributeCache _attr_cache;
 };
 
 /**

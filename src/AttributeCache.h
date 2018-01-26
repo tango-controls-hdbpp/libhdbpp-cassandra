@@ -56,19 +56,19 @@ public:
      * @brief Lookup the attribute TTL in the cache
      * @return True if found, false otherwise
     */
-    bool find_attr_ttl(const AttributeName &attr_name, unsigned long &ttl);
+    bool find_attr_ttl(const AttributeName &attr_name, unsigned int &ttl);
 
     /**
      * @brief Lookup the attribute TTL in the cache
      * @return True if successful, false otherwise
     */
-    bool update_attr_ttl(const AttributeName &attr_name, unsigned long new_ttl);
+    bool update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl);
 
     /**
      * @brief Cache an attributes uuid and ttl
      * @return True if cached ok, false otherwise
     */
-    bool cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned long ttl);
+    bool cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl);
 
     /**
      * @brief Check if an attribute is cached
