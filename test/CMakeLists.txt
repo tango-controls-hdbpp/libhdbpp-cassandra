@@ -11,6 +11,7 @@ target_include_directories(catch_library INTERFACE ${CATCH_INCLUDE_DIR})
 set(TEST_SOURCES 
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/AttributeNameTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/AttributeCacheTests.cpp    
     ${CMAKE_CURRENT_SOURCE_DIR}/CassandraConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/CassandraConnectionTests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/DbCommands.cpp
