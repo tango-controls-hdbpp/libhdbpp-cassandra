@@ -16,7 +16,7 @@ function(append_path_if_set VAR_NAME INCLUDE_LIST LIBRARY_LIST)
     if(${VAR_NAME})
         message(STATUS ${VAR_NAME} " set via command line to: " ${${VAR_NAME}})
         set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "${${VAR_NAME}}/include" PARENT_SCOPE)
-        set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "${${VAR_NAME}}/lib" PARENT_SCOPE)
+        set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "${${VAR_NAME}}/lib" PARENT_SCOPE)        
     else()
         set(${VAR_NAME} $ENV{${VAR_NAME}} )
 
@@ -24,15 +24,16 @@ function(append_path_if_set VAR_NAME INCLUDE_LIST LIBRARY_LIST)
         if(${VAR_NAME})
             message(STATUS ${VAR_NAME} " set via env to: " ${${VAR_NAME}})
             set(${INCLUDE_LIST} ${${INCLUDE_LIST}} "$ENV{${VAR_NAME}}/include" PARENT_SCOPE)
-            set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "$ENV{${VAR_NAME}}/lib" PARENT_SCOPE)
+            set(${LIBRARY_LIST} ${${LIBRARY_LIST}} "$ENV{${VAR_NAME}}/lib" PARENT_SCOPE)            
         endif()
     endif()
 endfunction()
 
 # Start Build Config -----------------------------------
 cmake_minimum_required(VERSION 3.0)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_COLOR_MAKEFILE   ON)
+set(CMAKE_SKIP_RPATH true)
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_COLOR_MAKEFILE ON)
 
 # To build both the static and shared version, we require two projects, we do
 # this by just defining the name appended with the target
@@ -70,17 +71,6 @@ endif(NOT HDBPP_CASS_BUILD_SHARED AND NOT HDBPP_CASS_BUILD_STATIC)
 # arch install definitions
 include(GNUInstallDirs)
 
-# Configure the compiler flags here
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -Wall")
-
-# Warn on any unresolved symbols in the shared library 
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
-
-# Set the output directory to lib to stay consistent with the old build
-set(OUTPUT_DIR "lib")
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/${OUTPUT_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/${OUTPUT_DIR})
-
 # set up a configuration file to pass variables into the build
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/LibHdb++CassandraConfig.h.in"
@@ -89,7 +79,7 @@ configure_file(
 message(STATUS "Building include paths...")
 
 # Add any include paths from the command line
-set(INCLUDE_PATHS ${INCLUDE_PATHS} ${CMAKE_INCLUDE_PATH})
+list(APPEND HDBPP_CASS_INCLUDE_PATHS ${CMAKE_INCLUDE_PATH})
 
 foreach(INC_PATH ${CMAKE_INCLUDE_PATH})
     message(STATUS "Extra include path: " ${INC_PATH})
@@ -97,7 +87,7 @@ endforeach()
 
 message(STATUS "Building library paths...")
 
-set(LIBRARY_PATHS ${LIBRARY_PATHS} ${CMAKE_LIBRARY_PATH})
+list(APPEND HDBPP_CASS_LIBRARY_PATHS ${CMAKE_LIBRARY_PATH})
 
 foreach(LIB_PATH ${CMAKE_LIBRARY_PATH})
     message(STATUS "Extra library search path: " ${LIB_PATH})
@@ -105,16 +95,17 @@ endforeach()
 
 # Since the library has a large number of dependencies we allow them
 # to be passed either from the command line or as install paths
-append_path_if_set(HDBPP_CASS_TANGO_INSTALL_DIR INCLUDE_PATHS LIBRARY_PATHS)
-append_path_if_set(HDBPP_CASS_OMIORB_INSTALL_DIR INCLUDE_PATHS LIBRARY_PATHS)
-append_path_if_set(HDBPP_CASS_CPP_INSTALL_DRIVER_DIR INCLUDE_PATHS LIBRARY_PATHS)
-append_path_if_set(HDBPP_CASS_LIBHDBPP_INSTALL_DIR INCLUDE_PATHS LIBRARY_PATHS)
-append_path_if_set(HDBPP_CASS_ZMQ_INSTALL_DIR INCLUDE_PATHS LIBRARY_PATHS)
+append_path_if_set(HDBPP_CASS_TANGO_INSTALL_DIR HDBPP_CASS_INCLUDE_PATHS HDBPP_CASS_LIBRARY_PATHS)
+append_path_if_set(HDBPP_CASS_OMIORB_INSTALL_DIR HDBPP_CASS_INCLUDE_PATHS HDBPP_CASS_LIBRARY_PATHS)
+append_path_if_set(HDBPP_CASS_CPP_INSTALL_DRIVER_DIR HDBPP_CASS_INCLUDE_PATHS HDBPP_CASS_LIBRARY_PATHS)
+append_path_if_set(HDBPP_CASS_LIBHDBPP_INSTALL_DIR HDBPP_CASS_INCLUDE_PATHS HDBPP_CASS_LIBRARY_PATHS)
+append_path_if_set(HDBPP_CASS_ZMQ_INSTALL_DIR HDBPP_CASS_INCLUDE_PATHS HDBPP_CASS_LIBRARY_PATHS)
 
 message(STATUS "Searching for libraries...")
 
 # Variable to contain a list of all the libs we depend on
-set(LIBRARIES 
+set(HDBPP_CASS_LIBRARIES
+    librt.so
     libcassandra.so
     libtango.so
     libomnithread.so
@@ -122,26 +113,33 @@ set(LIBRARIES
 
 # Now load the libraries and check each is found, if not
 # this is an error condition, so halt the cmake config
-foreach(LIB ${LIBRARIES})
+foreach(LIB ${HDBPP_CASS_LIBRARIES})
     # try the user provided paths first
-    find_library(FOUND_LIB_${LIB} ${LIB} PATHS ${LIBRARY_PATHS} NO_DEFAULT_PATH)
+    find_library(FOUND_LIB_${LIB} ${LIB} PATHS ${HDBPP_CASS_LIBRARY_PATHS} NO_DEFAULT_PATH)
 
     # if we could not find it, drop to the system paths
     if (NOT FOUND_LIB_${LIB})
         find_library(FOUND_LIB_${LIB} ${LIB})
     endif()
 
-    list(APPEND LIBS_DIR ${FOUND_LIB_${LIB}})
+    list(APPEND HDBPP_CASS_LIBS_DIR ${FOUND_LIB_${LIB}})
 
     if (FOUND_LIB_${LIB})
-        message(STATUS "Found " ${LIB} " at: " ${FOUND_LIB_${LIB}})
+        message(STATUS "HDBPP_CASS: Found " ${LIB} " at: " ${FOUND_LIB_${LIB}})
     else()
-        message(FATAL "Could not find " ${LIB})
+        message(FATAL "HDBPP_CASS: Could not find " ${LIB})
     endif()
 endforeach(LIB)
 
 # Include the source
 add_subdirectory(src)
+
+find_package(PkgConfig REQUIRED)
+pkg_search_module(TANGO REQUIRED tango)
+
+if(TANGO_FOUND)
+    message(STATUS "Found tango version ${TANGO_VERSION} at ${TANGO_PREFIX}")
+endif(TANGO_FOUND)
 
 # Build Targets  -----------------------------------
 
@@ -155,12 +153,12 @@ target_compile_options(object_library
     PUBLIC -std=c++11 -Wall -Wextra)
 
 target_include_directories(object_library 
-    PUBLIC ${INCLUDE_PATHS}
+    PUBLIC ${HDBPP_CASS_INCLUDE_PATHS}
     PRIVATE "${PROJECT_BINARY_DIR}")
 
 if(HDBPP_CASS_BUILD_SHARED)
     add_library(shared_library SHARED $<TARGET_OBJECTS:object_library>)
-    target_link_libraries(shared_library PUBLIC ${LIBS_DIR})
+    target_link_libraries(shared_library PUBLIC ${HDBPP_CASS_LIBS_DIR})
 
     set_target_properties(shared_library PROPERTIES 
         OUTPUT_NAME hdb++cassandra
@@ -170,9 +168,7 @@ if(HDBPP_CASS_BUILD_SHARED)
     # library via the cmake project and not require us to include all
     # its dependencies
     target_include_directories(shared_library 
-        PUBLIC ${INCLUDE_PATHS}
-        PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src
-        PUBLIC "${PROJECT_BINARY_DIR}")
+        PUBLIC ${HDBPP_CASS_INCLUDE_PATHS} ${CMAKE_CURRENT_LIST_DIR}/src "${PROJECT_BINARY_DIR}")
 
     # This will version the shared library
     set_target_properties(shared_library
@@ -182,15 +178,14 @@ endif(HDBPP_CASS_BUILD_SHARED)
 
 if(HDBPP_CASS_BUILD_STATIC)
     add_library(static_library STATIC $<TARGET_OBJECTS:object_library>)
-    target_link_libraries(static_library PUBLIC ${LIBS_DIR})
+    target_link_libraries(static_library PUBLIC ${HDBPP_CASS_LIBS_DIR})
     set_target_properties(static_library PROPERTIES OUTPUT_NAME hdb++cassandra)
 
     # Like the shared project, define dependencies, the static library is
     # used in the tests and requires no additional includes due to this
     target_include_directories(static_library 
-        PUBLIC ${INCLUDE_PATHS}
-        PUBLIC ${CMAKE_CURRENT_LIST_DIR}/src
-        PUBLIC "${PROJECT_BINARY_DIR}")    
+        PUBLIC ${HDBPP_CASS_INCLUDE_PATHS} ${CMAKE_CURRENT_LIST_DIR}/src "${PROJECT_BINARY_DIR}")
+
 endif(HDBPP_CASS_BUILD_STATIC)
 
 # Install Config -----------------------------------
@@ -201,7 +196,7 @@ if(HDBPP_CASS_BUILD_SHARED)
             DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
         install(FILES src/LibHdb++Cassandra.h 
-            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libhdb++cassandra)            
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libhdb++cassandra)
     else()
         install(TARGETS shared_library 
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

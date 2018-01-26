@@ -49,116 +49,55 @@ namespace HDBPP
 HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 {
     // LOG(Debug)<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
-
-    mp_cluster = NULL;
     map<string, string> libhdb_conf;
+    string local_dc;
+    string config;
+
+    // defaults
+    Log::LogLevel() = Error;
+    cass_log_set_level(CASS_LOG_DISABLED);
+
+    // convert the config vector to a map
     string_vector2map(configuration, "=", &libhdb_conf);
-    string local_dc = LOCAL_DC_DEFAULT;
-    string contact_points;
 
     // ---- logging_enabled optional config parameter ----
-    try
-    {
-        string logging_enabled_state = libhdb_conf.at("logging_enabled");
-        logging_enabled_state == "true" ? Log::LogLevel() = Debug : Log::LogLevel() = Error;
-    }
-    catch (const std::out_of_range &e)
-    {
-        // setting logging to Error by default
-        Log::LogLevel() = Error;
-    }
+    if(!(config = get_config_param(libhdb_conf, "logging_enabled", false)).empty())
+        config == "true" ? Log::LogLevel() = Debug : Log::LogLevel() = Error;
 
     // ---- cassandra_driver_log_level optional config parameter ----
-    try
-    {
-        string cassandra_driver_log_level = libhdb_conf.at("cassandra_driver_log_level");
-        set_cassandra_logging_level(cassandra_driver_log_level);
-    }
-    catch (const std::out_of_range &e)
-    {
-        LOG(Debug) << "cassandra_driver_log_level configuration parameter is not defined. Default value will be used."
-                   << endl;
+    if(!(config = get_config_param(libhdb_conf, "cassandra_driver_log_level", false)).empty())
+        set_cassandra_logging_level(config);
 
-        // default is disabled
-        cass_log_set_level(CASS_LOG_DISABLED);
-    }
+    // ---- user optional config parameter ----
+    auto user = get_config_param(libhdb_conf, "user", false);
 
-    // ---- Mandatory configuration parameters ----
-    try
+    // ---- password optional config parameter ----
+    auto password = get_config_param(libhdb_conf, "password", false);
+
+    // ---- local_dc optional config parameter ----
+    local_dc = get_config_param(libhdb_conf, "local_dc", false);
+
+    if(local_dc.empty())
     {
-        contact_points = libhdb_conf.at("contact_points");
-        LOG(Debug) << "Configuration \"contact_points\" set to: " << contact_points << endl;
-    }
-    catch (const std::out_of_range &e)
-    {
-        stringstream error_desc;
+        local_dc = LOCAL_DC_DEFAULT;
 
-        error_desc << "Configuration parsing error: \"contact_points\" mandatory configuration parameter not found"
-                   << ends;
-
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_CONFIG, error_desc.str(), __func__);
+        LOG(Debug) << "Library configuration parameter local_dc is not defined. Defaulting to: " 
+                   << LOCAL_DC_DEFAULT << endl;
     }
 
-    try
-    {
-        m_keyspace_name = libhdb_conf.at("keyspace");
-        LOG(Debug) << "contact_points=\"" << contact_points << "\"" << endl;
-        LOG(Debug) << "keyspace=\"" << m_keyspace_name << "\"" << endl;
-    }
-    catch (const std::out_of_range &e)
-    {
-        stringstream error_desc;
+    // ---- store diag times optional config parameter ----
+    auto store_diag_time_str = get_config_param(libhdb_conf, "store_diag_time", false);
+    store_diag_time_str == "true" ? _store_diag_times = true : _store_diag_times = false;
 
-        error_desc << "Configuration parsing error: \"keyspace\" mandatory configuration parameter not found"
-                   << ends;
+    // ---- consistency mandatory config parameter ----
+    if(!(config = get_config_param(libhdb_conf, "consistency", true)).empty())
+        set_cassandra_consistency_level(config);
 
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_CONFIG, error_desc.str(), __func__);
-    }
+    // ---- contact_points mandatory config parameter ----
+    auto contact_points = get_config_param(libhdb_conf, "contact_points", true);
 
-    // ---- optional config parameters ----
-    string user;
-    string password;
-
-    try
-    {
-        string store_diag_time_str = libhdb_conf.at("store_diag_time");
-        store_diag_time_str == "true" ? _store_diag_times = true : _store_diag_times = false;
-    }
-    catch (const std::out_of_range &e)
-    {
-        LOG(Debug) << "Library configuration parameter \"store_diag_time\" is not defined. "
-                   << "Using default setting of true." << endl;
-    }
-
-    try
-    {
-        user = libhdb_conf.at("user");
-    }
-    catch (const std::out_of_range &e)
-    {
-        LOG(Debug) << "Library configuration parameter \"user\" is not defined. " << endl;
-    }
-
-    try
-    {
-        password = libhdb_conf.at("password");
-    }
-    catch (const std::out_of_range &e)
-    {
-        LOG(Debug) << "Library configuration parameter \"password\" is not defined. " << endl;
-    }
-
-    try
-    {
-        local_dc = libhdb_conf.at("local_dc");
-    }
-    catch (const std::out_of_range &e)
-    {
-        LOG(Debug) << "Library configuration parameter \"local_dc\" is not defined. Default value DC1 will be used."
-                   << endl;
-    }
+    // ---- keyspace mandatory config parameter ----
+    m_keyspace_name = get_config_param(libhdb_conf, "keyspace", true);
 
     mp_cluster = cass_cluster_new();
     cass_cluster_set_contact_points(mp_cluster, contact_points.c_str());
@@ -314,11 +253,9 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdAndTtlInDb);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
-                                       attr_name.full_attribute_name().c_str());
-    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
-                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_set_consistency(statement, consistency);
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(), attr_name.full_attribute_name().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
 
     CassFuture *future = cass_session_execute(mp_session, statement);
     cass_future_wait(future);
@@ -440,11 +377,9 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdTypeAndTtlInDb);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
-                                       attr_name.full_attribute_name().c_str());
-    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
-                                       attr_name.tango_host_with_domain().c_str());
+    cass_statement_set_consistency(statement, consistency);
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),attr_name.full_attribute_name().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),attr_name.tango_host_with_domain().c_str());
 
     CassFuture *future = cass_session_execute(mp_session, statement);
     cass_future_wait(future);
@@ -524,9 +459,7 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
     last_event = "??";
 
     CassStatement *statement = _prepared_statements->statement(Query::FindLastEvent);
-
-    /// @todo Make the consistency tunable?
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
     cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), id);
 
     CassFuture *future = cass_session_execute(mp_session, statement);
@@ -660,7 +593,7 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     }
 
     CassStatement *statement = _prepared_statements->statement(data_type, data_format, write_type);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
     cass_statement_bind_uuid_by_name(statement, SC_COL_ID.c_str(), id);
 
     // Compute the period based on the month of the event time
@@ -745,7 +678,7 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
     int current_time_us = ts.tv_nsec / 1000;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertHistoryEvent);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
     cass_statement_bind_uuid_by_name(statement, HISTORY_COL_ID.c_str(), att_conf_id);
     cass_statement_bind_string_by_name(statement, HISTORY_COL_EVENT.c_str(), history_event_name.c_str());
     cass_statement_bind_int64_by_name(statement, HISTORY_COL_TIME.c_str(), current_time);
@@ -804,7 +737,7 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     }
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertParamAttribute);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
     cass_statement_bind_uuid_by_name(statement, PARAM_COL_ID.c_str(), uuid);
 
     // Get the current time
@@ -870,7 +803,7 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     cass_statement_bind_string_by_name(statement, PARAM_COL_DESCRIPTION.c_str(),
                                        data->attr_conf->description.c_str());
 
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
 
     CassError rc = execute_statement(statement);
 
@@ -1114,7 +1047,7 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertAttributeConf);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
 
     CassUuidGen *uuid_gen = cass_uuid_gen_new();
     cass_uuid_gen_time(uuid_gen, &uuid);
@@ -1151,9 +1084,11 @@ void HdbPPCassandra::insert_domain(AttributeName &attr_name)
     TRACE_ENTER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertDomain);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, consistency);
+
     cass_statement_bind_string_by_name(statement, DOMAINS_COL_FACILITY.c_str(),
                                        attr_name.tango_host_with_domain().c_str());
+                                       
     cass_statement_bind_string_by_name(statement, DOMAINS_COL_DOMAIN.c_str(), attr_name.domain().c_str());
 
     CassError rc = execute_statement(statement);
@@ -1207,8 +1142,10 @@ void HdbPPCassandra::insert_member(AttributeName &attr_name)
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertMember);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+
     cass_statement_bind_string_by_name(statement, MEMBERS_COL_FACILITY.c_str(),
                                        attr_name.tango_host_with_domain().c_str());
+                                       
     cass_statement_bind_string_by_name(statement, MEMBERS_COL_DOMAIN.c_str(), attr_name.domain().c_str());
     cass_statement_bind_string_by_name(statement, MEMBERS_COL_FAMILY.c_str(), attr_name.family().c_str());
     cass_statement_bind_string_by_name(statement, MEMBERS_COL_MEMBER.c_str(), attr_name.member().c_str());
@@ -1236,14 +1173,10 @@ void HdbPPCassandra::insert_attr_name(AttributeName &attr_name)
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertName);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
-    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FACILITY.c_str(),
-                                       attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_DOMAIN.c_str(),
-                                       attr_name.domain().c_str());
-    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FAMILY.c_str(),
-                                       attr_name.family().c_str());
-    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_MEMBER.c_str(),
-                                       attr_name.member().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_DOMAIN.c_str(), attr_name.domain().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FAMILY.c_str(), attr_name.family().c_str());
+    cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_MEMBER.c_str(), attr_name.member().c_str());
     cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_NAME.c_str(), attr_name.name().c_str());
 
     CassError rc = execute_statement(statement);
@@ -1273,10 +1206,8 @@ void HdbPPCassandra::update_ttl(unsigned int ttl, AttributeName &attr_name)
     CassStatement *statement = _prepared_statements->statement(Query::UpdateTtl);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
     cass_statement_bind_int32_by_name(statement, CONF_COL_TTL.c_str(), ttl);
-    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
-                                       attr_name.tango_host_with_domain().c_str());
-    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),
-                                       attr_name.full_attribute_name().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
+    cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(), attr_name.full_attribute_name().c_str());
 
     CassError rc = execute_statement(statement);
 
@@ -1379,6 +1310,71 @@ void HdbPPCassandra::set_cassandra_logging_level(string level)
     {
         LOG(Debug) << cass_log_level_string(cassandra_logging_level) << endl;
     }
+}
+
+//=============================================================================
+//=============================================================================
+void HdbPPCassandra::set_cassandra_consistency_level(string consistency_level)
+{
+    if(consistency_level == "ALL")
+        consistency = CASS_CONSISTENCY_ALL;
+    else if(consistency_level == "EACH_QUORUM")
+        consistency = CASS_CONSISTENCY_EACH_QUORUM;
+    else if(consistency_level == "QUORUM")
+        consistency = CASS_CONSISTENCY_QUORUM;
+    else if(consistency_level == "LOCAL_QUORUM")
+        consistency = CASS_CONSISTENCY_LOCAL_QUORUM;
+    else if(consistency_level == "ONE")
+        consistency = CASS_CONSISTENCY_ONE;
+    else if(consistency_level == "TWO")
+        consistency = CASS_CONSISTENCY_TWO;
+    else if(consistency_level == "THREE")
+        consistency = CASS_CONSISTENCY_THREE;
+    else if(consistency_level == "LOCAL_ONE")
+        consistency = CASS_CONSISTENCY_LOCAL_ONE;
+    else if(consistency_level == "ANY")
+        consistency = CASS_CONSISTENCY_ANY;
+    else if(consistency_level == "SERIAL")
+        consistency = CASS_CONSISTENCY_SERIAL;
+    else if(consistency_level == "LOCAL_SERIAL")
+        consistency = CASS_CONSISTENCY_LOCAL_SERIAL;
+    else
+    {
+        stringstream error_desc;
+        error_desc << "An invalid consistency configuration was passed: " << consistency_level << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_TYPE_CONFIG, error_desc.str(), __func__);
+    }
+}
+
+//=============================================================================
+//=============================================================================
+string HdbPPCassandra::get_config_param(const map<string, string> &conf, string param, bool mandatory)
+{
+    auto iter = conf.find(param);
+
+    if(iter == conf.end() && mandatory)
+    {
+        stringstream error_desc;
+
+        error_desc << "Configuration parsing error: mandatory configuration parameter: " << param << " not found"
+                   << ends;
+
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_TYPE_CONFIG, error_desc.str(), __func__);
+    }
+    else if(iter != conf.end())
+    {
+        LOG(Debug) << "Configuration: " << param << " set to: " << (*iter).second << endl;
+    }
+    else
+    {
+        LOG(Debug) << "Configuration: " << param << " not found" << endl;
+    }
+
+    // for non-mandatory config params that have not been set, just return
+    // an empty string
+    return iter ==  conf.end() ? "" : (*iter).second;
 }
 
 //=============================================================================

@@ -5,9 +5,19 @@
 
 [HDB++](http://www.tango-controls.org/community/projects/hdbplus) library for Apache Cassandra backend. This library is loaded by [Libhdbpp](https://github.com/tango-controls-hdbpp/libhdbpp) to archive events from a Tango Controls system.
 
+- [Libhdbpp-Cassandra](#libhdbpp-cassandra)
+    - [Version](#version)
+        - [**Important Changes** 0.9.1 -> 0.10.0](#important-changes-091---0100)
+    - [Documentation](#documentation)
+    - [Bugs Reports](#bugs-reports)
+    - [Building and Installation](#building-and-installation)
+    - [Running Tests](#running-tests)
+    - [Compatibility](#compatibility)
+    - [License](#license)
+
 ## Version
 
-The current release version is 0.10.0.
+The current release version is 0.11.0.
 
 ### **Important Changes** 0.9.1 -> 0.10.0
 
@@ -18,7 +28,7 @@ This release version of the library has made a few changes to standardize its us
 ## Documentation
 
 * See the tango documentation [here](http://tango-controls.readthedocs.io/en/latest/administration/services/hdbpp/index.html#hdb-an-archiving-historian-service) for broader information about the HB++ archiving system and its integration into Tango Controls
-* Libhdbpp-Cassandra [CHANGELOG.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/CHANGELOG.md) contains the latest changes both released and in development.
+* Libhdbpp-Cassandra [CHANGELOG.md](CHANGELOG.md) contains the latest changes both released[and in development.]
 
 ## Bugs Reports
 
@@ -28,13 +38,13 @@ Please file bug reports above in the issues section.
 
 To compile this library, you will need to download and install the [DataStax Cassandra C++ Driver](https://github.com/datastax/cpp-driver). The Datastax Cassandra C++ Driver depends on [Libuv](https://github.com/libuv/libuv) and this will need installing also.
 
-See the [INSTALL.md](https://github.com/tango-controls-hdbpp/libhdbpp-cassandra/blob/master/INSTALL.md) file for  detailed instructions on how to build and install libhdbpp-cassandra.
+See the [INSTALL.md](INSTALL.md) file for  detailed instructions on how to build and install libhdbpp-cassandra.
 
 ## Running Tests
 
 The library is now partially covered with unit tests built on the Catch Unit Test framework. These are still under active development. The unit test binary is output to the bin directory.
 
-To run all the tests a running cassandra node is required to test against. See the [INSTALL.md](https://github.com/tango-controls-hdbpp/libhdbpp/blob/master/INSTALL.md) for the flags to build the unit tests. Once built, they can be run from the command line as follows. 
+To run all the tests a running cassandra node is required to test against. See the [INSTALL.md](INSTALL.md) for the flags to build the unit tests. Once built, they can be run from the command line as follows. 
 
 ```bash
 ./bin/unit-tests
@@ -64,9 +74,11 @@ The library has been built and tested against certain versions of its dependenci
 
 The compatibility matrix with dependencies is as follows:
 
-| Libhdbpp-Cassandra Version | Cassandra Version | Datastax C++ Driver | Libuv |
-|---------|-------------------|------------|-------|
-| 0.10.0 | 2.2.9 | 2.2.1 | 1.4.2 |
+| Libhdbpp-Cassandra Version | Libray Soname | Cassandra Version | Datastax C++ Driver | Libuv |
+|----------------------------|---------------|-------------------|---------------------|-------|
+| 0.11.0 | 7.1.0 | 2.2.11 | 2.2.1 | 1.4.2 |
+| 0.10.0 | 7.0.0 | 2.2.11 | 2.2.1 | 1.4.2 |
+| 0.10.0 | 7.0.0 | 2.2.9 | 2.2.1 | 1.4.2 |
 
 Soname version mapping to libhdbpp.so:
 
