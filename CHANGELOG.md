@@ -7,10 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
 * Prepared statements implemented along with a string cache for the queries. This will speed up many repeated database calls.
 * Tango Events are now bound in a separate templated class to improve maintainability and reduce repeated code.
 * More unit tests and a mean to test database based calls via a simple ad hoc connection to a cassandra database. This infrastructure can open a connection to a cassandra cluster and prime the database ready for use with the create_hdb_cassandra.cql file.
+
+### Changed
+
 * Lots more cleaning and documenting the code, such as todos now showing up in the doxygen documents.
+
+## [0.11.0] - 2018-01-05
+
+### Added 
+
+* Consistency configuration parameter added to the library config parameters.
+
+### Changed
+
+* Refactor large HdbPPCassandra constructor.
+* Changed shared library output directory to build location (more consistent with cmake).
+* Unit test build now requires CMake 3.0.2, since it builds against the tango.pc pkgconfig file.
 
 ## [0.10.0] - 2017-09-13
 
