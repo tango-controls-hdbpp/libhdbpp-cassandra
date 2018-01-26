@@ -9,7 +9,7 @@
     - [Version](#version)
         - [**Important Changes** 0.9.1 -> 0.10.0](#important-changes-091---0100)
     - [Documentation](#documentation)
-    - [Bugs R)eports](#bugs-reports)
+    - [Bugs Reports](#bugs-reports)
     - [Building and Installation](#building-and-installation)
     - [Running Tests](#running-tests)
     - [Compatibility](#compatibility)
@@ -30,7 +30,7 @@ This release version of the library has made a few changes to standardize its us
 * See the tango documentation [here](http://tango-controls.readthedocs.io/en/latest/administration/services/hdbpp/index.html#hdb-an-archiving-historian-service) for broader information about the HB++ archiving system and its integration into Tango Controls
 * Libhdbpp-Cassandra [CHANGELOG.md](CHANGELOG.md) contains the latest changes both released[and in development.]
 
-## Bugs R)eports
+## Bugs Reports
 
 Please file bug reports above in the issues section.
 
