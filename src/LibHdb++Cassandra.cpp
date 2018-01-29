@@ -188,11 +188,11 @@ void HdbPPCassandra::connect_session()
 
 //=============================================================================
 //=============================================================================
-bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &uuid, unsigned int &ttl)
+void HdbPPCassandra::load_and_cache_uuid_and_ttl(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
-    CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdAndTtlInDb);
+    CassStatement *statement = _prepared_statements->statement(Query::GetAttrIdAndTtl);
     cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(), attr_name.full_attribute_name().c_str());
     cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
@@ -207,46 +207,37 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
         cass_statement_free(statement);
 
         throw_execute_exception(EXCEPTION_TYPE_QUERY,
-                                _prepared_statements->query_string(Query::FindAttrIdAndTtlInDb), rc,
+                                _prepared_statements->query_string(Query::GetAttrIdAndTtl), rc,
                                 __func__);
     }
 
     const CassResult *result = cass_future_get_result(future);
     CassIterator *iterator = cass_iterator_from_result(result);
-    bool found = false;
 
     if (cass_iterator_next(iterator))
     {
         LOG(Debug) << "SUCCESS in query: "
-                   << _prepared_statements->query_id_to_str(Query::FindAttrIdAndTtlInDb) << " ("
-                   << CONF_COL_NAME << "=\'" << attr_name.full_attribute_name() << "\',"
-                   << CONF_COL_FACILITY << "=\'" << attr_name.tango_host_with_domain() << "\')" << endl;
+                   << _prepared_statements->query_id_to_str(Query::GetAttrIdAndTtl) << " ("
+                   << CONF_COL_NAME << "=" << attr_name.full_attribute_name() << ", "
+                   << CONF_COL_FACILITY << "=" << attr_name.tango_host_with_domain() << ")" << endl;
+
+        CassUuid uuid;
+        cass_int32_t ttl = 0;
 
         const CassRow *row = cass_iterator_get_row(iterator);
         cass_value_get_uuid(cass_row_get_column(row, 0), &uuid);
-        cass_int32_t ttl_val = 0;
 
-        const CassValue *cass_ttl_val = cass_row_get_column_by_name(row, CONF_COL_TTL.c_str());
+        CassError ttl_cass_error =
+            cass_value_get_int32(cass_row_get_column_by_name(row, CONF_COL_TTL.c_str()), &ttl);
 
-        if (cass_ttl_val == NULL)
+        if (ttl_cass_error != CASS_OK)
         {
-            LOG(Debug) << "Column ttl does not exist" << endl;
-        }
-        else
-        {
-            LOG(Debug) << "OK . value_type() = " << cass_value_type(cass_ttl_val) << endl;
-        }
-
-        CassError get_ttl_cass_error =
-            cass_value_get_int32(cass_row_get_column_by_name(row, CONF_COL_TTL.c_str()), &ttl_val);
-
-        if (get_ttl_cass_error != CASS_OK)
-        {
-            if (get_ttl_cass_error == CASS_ERROR_LIB_NULL_VALUE)
+            if (ttl_cass_error == CASS_ERROR_LIB_NULL_VALUE)
             {
                 // The ttl was null, perhaps it was removed, or missing due to an
                 // upgrade. This is not an error condition
-                LOG(Debug) << "TTL value is NULL" << endl;
+                LOG(Warning) << "Database ttl value is NULL, setting ttl to 0" << endl;
+                ttl = 0;
             }
             else
             {
@@ -258,58 +249,70 @@ bool HdbPPCassandra::find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUu
                 stringstream error_desc;
 
                 error_desc << "An unexpected database error occured when trying to retrieve the TTL: "
-                           << cass_error_desc(get_ttl_cass_error) << " for attribute: " << attr_name
+                           << cass_error_desc(ttl_cass_error) << " for attribute: " << attr_name
                            << ends;
 
                 LOG(Error) << error_desc.str() << endl;
                 Tango::Except::throw_exception(EXCEPTION_TYPE_QUERY, error_desc.str(), __func__);
             }
-
-            ttl = 0;
-        }
-        else
-        {
-            LOG(Debug) << "cass_value_get_int32 returned " << ttl_val << endl;
-            ttl = ttl_val;
         }
 
-        LOG(Debug) << "(" << attr_name << "): uuid found " << endl;
-        LOG(Debug) << "(" << attr_name << "): TTL = " << ttl << endl;
+        char uuid_str[CASS_UUID_STRING_LENGTH];
+        cass_uuid_string(uuid, &uuid_str[0]);
+        LOG(Debug) << "Loaded uuid for: " << attr_name << ", uuid = "<< uuid_str << endl;
+        LOG(Debug) << "Loaded TTL for: " << attr_name << ", TTL = " << ttl << endl;
 
-        found = true;
-
-        if(!_attr_cache.cache_attribute(attr_name, uuid, ttl))
-        {   
-            // TODO This error needs to be handled better         
-            char uuid_str[CASS_UUID_STRING_LENGTH];
-            cass_uuid_string(uuid, uuid_str);
-            LOG(Error) << "uuid (" << uuid_str << ") could not be added into cache for attr =" << attr_name << endl;
-        }
+        // now cache the details into the attribute cache, this will
+        // save future calls to the database
+        _attr_cache.cache_attribute(attr_name, uuid, ttl);
     }
+    else
+    {
+        cass_result_free(result);
+        cass_iterator_free(iterator);
+        cass_future_free(future);
+        cass_statement_free(statement);
 
+        stringstream error_desc;
+        error_desc << "ERROR: Could not find ttl/uuid in HDB++ configuration for attribute: " << attr_name << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
+    }
+    
     cass_result_free(result);
     cass_iterator_free(iterator);
     cass_future_free(future);
     cass_statement_free(statement);
-
-    if (!found)
-        LOG(Debug) << "(" << attr_name << "): NO RESULT in query: "
-                   << _prepared_statements->query_id_to_str(Query::FindAttrIdAndTtlInDb) << endl;
-
     TRACE_EXIT;
-    return found;
 }
 
 //=============================================================================
 //=============================================================================
-HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(AttributeName &attr_name,
-                                                                         CassUuid &ID,
-                                                                         string attr_type,
-                                                                         unsigned int &conf_ttl)
+unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
+{
+    if (!_attr_cache.cached(attr_name))
+        load_and_cache_uuid_and_ttl(attr_name);
+
+    return _attr_cache.find_attr_ttl(attr_name);
+}
+
+//=============================================================================
+//=============================================================================
+CassUuid HdbPPCassandra::get_attr_uuid(AttributeName &attr_name)
+{
+    if( _attr_cache.cached(attr_name) == false)
+        load_and_cache_uuid_and_ttl(attr_name);
+
+    return _attr_cache.find_attr_uuid(attr_name);
+}
+
+//=============================================================================
+//=============================================================================
+bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &attr_type)
 {
     TRACE_ENTER;
 
-    CassStatement *statement = _prepared_statements->statement(Query::FindAttrIdTypeAndTtlInDb);
+    CassStatement *statement = _prepared_statements->statement(Query::GetAttrDataType);
     cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(),attr_name.full_attribute_name().c_str());
     cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),attr_name.tango_host_with_domain().c_str());
@@ -323,35 +326,26 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
         cass_future_free(future);
         cass_statement_free(statement);
         throw_execute_exception(EXCEPTION_TYPE_QUERY,
-                                _prepared_statements->query_string(Query::FindAttrIdTypeAndTtlInDb),
+                                _prepared_statements->query_string(Query::GetAttrDataType),
                                 rc, __func__);
     }
 
     const CassResult *result = cass_future_get_result(future);
     CassIterator *iterator = cass_iterator_from_result(result);
-    bool found = false;
-    string db_type = "";
+    string db_type;
 
     if (cass_iterator_next(iterator))
     {
         LOG(Debug) << "SUCCESS in query: "
-                   << _prepared_statements->query_id_to_str(Query::FindAttrIdTypeAndTtlInDb) << endl;
+                   << _prepared_statements->query_id_to_str(Query::GetAttrDataType) << " ("
+                   << CONF_COL_NAME << "=" << attr_name.full_attribute_name() << ", "
+                   << CONF_COL_FACILITY << "=" << attr_name.tango_host_with_domain() << ")" << endl;
 
-        /// @todo Improve error handling
         const CassRow *row = cass_iterator_get_row(iterator);
-        cass_value_get_uuid(cass_row_get_column(row, 0), &ID);
         const char *db_type_res;
         size_t db_type_res_length;
         cass_value_get_string(cass_row_get_column(row, 1), &db_type_res, &db_type_res_length);
         db_type = string(db_type_res, db_type_res_length);
-        cass_int32_t ttl_val = 0;
-
-        if (cass_value_get_int32(cass_row_get_column(row, 2), &ttl_val) == CASS_ERROR_LIB_NULL_VALUE)
-            conf_ttl = 0;
-        else
-            conf_ttl = (unsigned int)ttl_val;
-
-        found = true;
     }
 
     cass_result_free(result);
@@ -359,29 +353,32 @@ HdbPPCassandra::FindAttrResult HdbPPCassandra::find_attr_id_type_and_ttl(Attribu
     cass_future_free(future);
     cass_statement_free(statement);
 
-    if (!found)
+    if (db_type != attr_type)
+    {
+        stringstream error_desc;
+
+        error_desc << attr_name.tango_host_with_domain() << "/" << attr_name
+                   << " already configured with different configuration."
+                   << "Please contact your administrator for this special case" << ends;
+
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_TYPE_NULL_POINTER, error_desc.str(), __func__);
+    }
+
+    if (db_type.empty())
     {
         LOG(Warning) << "NO RESULT in query: "
-                     << _prepared_statements->query_id_to_str(Query::FindAttrIdTypeAndTtlInDb) << endl;
-        TRACE_EXIT;
-        return AttrNotFound;
+                     << _prepared_statements->query_id_to_str(Query::GetAttrDataType) << endl;
     }
-    else if (db_type != attr_type)
+    else
     {
         LOG(Debug) << "FOUND ID for " << attr_name.tango_host_with_domain() << "/"
-                   << attr_name.full_attribute_name() << " but different type: attr_type=" << attr_type
-                   << "-db_type=" << db_type << endl;
-
-        TRACE_EXIT;
-        return FoundAttrWithDifferentType;
+                << attr_name.full_attribute_name() << " with SAME type: attr_type=" << attr_type
+                << "-db_type=" << db_type << endl;
     }
 
-    LOG(Debug) << "FOUND ID for " << attr_name.tango_host_with_domain() << "/"
-               << attr_name.full_attribute_name() << " with SAME type: attr_type=" << attr_type
-               << "-db_type=" << db_type << endl;
-
     TRACE_EXIT;
-    return FoundAttrWithSameType;
+    return !db_type.empty();
 }
 
 //=============================================================================
@@ -514,16 +511,8 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
         ev_time_us = rcv_time_us;
     }
 
-    CassUuid uuid;
-    unsigned int ttl = 0;
-
-    if (!_attr_cache.find_attr_uuid(attr_name, uuid) || !_attr_cache.find_attr_ttl(attr_name, ttl))
-    {
-        stringstream error_desc;
-        error_desc << "ERROR Could not find uuid or ttl  for attribute  \"" << attr_name << "\": " << ends;
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
-    }
+    CassUuid uuid = get_attr_uuid(attr_name);
+    unsigned int ttl = get_attr_ttl(attr_name);
 
     CassStatement *statement = _prepared_statements->statement(data_type, data_format, write_type);
     cass_statement_set_consistency(statement, _consistency);
@@ -631,6 +620,7 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
 //=============================================================================
 void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type)
 {
+    (void)ev_data_type; // Fix warning
     TRACE_ENTER;
 
     if (data == NULL)
@@ -653,22 +643,7 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
     int64_t ev_time = ((int64_t)data->get_date().tv_sec) * 1000;
     int ev_time_us = data->get_date().tv_usec;
 
-    CassUuid uuid;
-
-    if (!_attr_cache.find_attr_uuid(attr_name, uuid))
-    {
-        stringstream error_desc;
-        error_desc << "ERROR Could not find ID for attribute  \"" << attr_name << "\": " << ends;
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
-    }
-    else
-    {
-        char uuid_str[CASS_UUID_STRING_LENGTH];
-        cass_uuid_string(uuid, uuid_str);
-        LOG(Debug) << "ID found for attribute " << attr_name << " = " << uuid_str << endl;
-    }
-
+    CassUuid uuid = get_attr_uuid(attr_name);
     CassStatement *statement = _prepared_statements->statement(Query::InsertParamAttribute);
     cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_uuid_by_name(statement, PARAM_COL_ID.c_str(), uuid);
@@ -750,11 +725,7 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
 
 //=============================================================================
 //=============================================================================
-void HdbPPCassandra::configure_Attr(string name,
-                                    int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                    int format /*SCALAR, SPECTRUM, ..*/,
-                                    int write_type /*READ, READ_WRITE, ..*/,
-                                    unsigned int ttl /* hours, 0=infinity*/)
+void HdbPPCassandra::configure_Attr(string name, int type, int format, int write_type, unsigned int ttl)
 {
     TRACE_ENTER;
 
@@ -772,53 +743,37 @@ void HdbPPCassandra::configure_Attr(string name,
                << " attr_name=" << attr_name << endl;
 
     string data_type = _prepared_statements->get_table_name(type, format, write_type);
-
-    CassUuid id;
-    unsigned int conf_ttl = 0;
-    FindAttrResult find_attr_result = find_attr_id_type_and_ttl(attr_name, id, data_type, conf_ttl);
-
-    // ID already present but different configuration (attribute type)
-    if (find_attr_result == FoundAttrWithDifferentType)
+    
+    if(attr_type_exists(attr_name, data_type))
     {
-        stringstream error_desc;
+        LOG(Debug) << "ALREADY CONFIGURED with same configuration: "
+                   << attr_name.tango_host_with_domain() << "/" << attr_name << endl;
 
-        error_desc << attr_name.tango_host_with_domain() << "/" << attr_name
-                   << " already configured with different configuration."
-                   << "Please contact your administrator for this special case" << ends;
+        CassUuid uuid = get_attr_uuid(attr_name);
+        unsigned int conf_ttl = get_attr_ttl(attr_name);
 
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_NULL_POINTER, error_desc.str(), __func__);
+        if (conf_ttl != ttl)
+        {
+            LOG(Debug) << ".... BUT different ttl: updating " << conf_ttl << " to " << ttl << endl;
+            update_ttl(attr_name, ttl);
+        }
+        // If the last event was EVENT_REMOVE, add it again
+        string last_event;
+
+        if (find_last_event(uuid, last_event, attr_name) && last_event == EVENT_REMOVE)
+        {
+            // An attribute which was removed needs to be added again
+            insert_history_event(EVENT_ADD, uuid);
+        }
     }
     else
     {
-        // ID found and same configuration (attribute type): do nothing
-        if (find_attr_result == FoundAttrWithSameType)
-        {
-            LOG(Debug) << "ALREADY CONFIGURED with same configuration: "
-                       << attr_name.tango_host_with_domain() << "/" << attr_name << endl;
+        // insert into configuration table
+        CassUuid uuid;
+        insert_attr_conf(attr_name, data_type, uuid, ttl);
 
-            if (conf_ttl != ttl)
-            {
-                LOG(Debug) << ".... BUT different ttl: updating " << conf_ttl << " to " << ttl << endl;
-                update_ttl(ttl, attr_name);
-            }
-            // If the last event was EVENT_REMOVE, add it again
-            string last_event;
-            if (find_last_event(id, last_event, attr_name) && last_event == EVENT_REMOVE)
-            {
-                // An attribute which was removed needs to be added again
-                insert_history_event(EVENT_ADD, id);
-            }
-        }
-        else
-        {
-            // insert into configuration table
-            CassUuid uuid;
-            insert_attr_conf(attr_name, data_type, uuid, ttl);
-
-            // Add ADD event into history table
-            insert_history_event(EVENT_ADD, uuid);
-        }
+        // Add ADD event into history table
+        insert_history_event(EVENT_ADD, uuid);
     }
 
     // Insert into domains table
@@ -838,23 +793,13 @@ void HdbPPCassandra::configure_Attr(string name,
 
 //=============================================================================
 //=============================================================================
-void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl /* hours, 0=infinity*/)
+void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl)
 {
     TRACE_ENTER;
     LOG(Debug) << "Update: " << fqdn_attr_name << " TTL with parameter ttl = " << ttl << endl;
 
     AttributeName attr_name(fqdn_attr_name);
-    CassUuid uuid;
-
-    if (!_attr_cache.find_attr_uuid(attr_name, uuid))
-    {
-        stringstream error_desc;
-        error_desc << "ERROR Attribute " << attr_name << " NOT FOUND in HDB++ configuration table" << ends;
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str(), __func__);
-    }
-
-    update_ttl(ttl, attr_name);
+    update_ttl(attr_name, ttl);
     TRACE_EXIT;
 }
 
@@ -865,16 +810,7 @@ void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
     TRACE_ENTER;
 
     AttributeName attr_name(fqdn_attr_name);
-    CassUuid uuid;
-
-    if (!_attr_cache.find_attr_uuid(attr_name, uuid))
-    {
-        stringstream error_desc;
-        error_desc << "ERROR Attribute " << attr_name << " NOT FOUND in HDB++ configuration table" << ends;
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
-    }
-
+    CassUuid uuid = get_attr_uuid(attr_name);
     string event_name = "";
 
     switch (event)
@@ -1126,13 +1062,13 @@ void HdbPPCassandra::insert_attr_name(AttributeName &attr_name)
  * update_ttl(): Execute the query to update the TTL for the attribute having the
  * specified ID
  *
- * @param ttl: the new ttl value
  * @param attr_name: Attribute name class containing the fully qualified domain name
+ * @param ttl: the new ttl value
  * @throws Tango::DevFailed exceptions in case of error during the query
  *         execution
  */
 //=============================================================================
-void HdbPPCassandra::update_ttl(unsigned int ttl, AttributeName &attr_name)
+void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
 {
     TRACE_ENTER;
 
@@ -1148,16 +1084,7 @@ void HdbPPCassandra::update_ttl(unsigned int ttl, AttributeName &attr_name)
         throw_execute_exception("ERROR executing update tll query",
                                 _prepared_statements->query_id_to_str(Query::UpdateTtl), rc, __func__);
 
-    if (_attr_cache.update_attr_ttl(attr_name, ttl) == false)
-    {
-        // in this case, the ttl should exist, since the caller loaded the attribute
-        // from the database if it was not loaded, this should have cached the ttl
-        stringstream error_desc;
-        error_desc << "ERROR Attribute " << attr_name << " ttl is missing in the cache" << ends;
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_ATTR_CACHE, error_desc.str().c_str(), __func__);
-    }
-
+    _attr_cache.update_attr_ttl(attr_name, ttl);
     TRACE_EXIT;
 }
 

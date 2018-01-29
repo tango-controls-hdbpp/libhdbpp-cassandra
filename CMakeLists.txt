@@ -134,13 +134,6 @@ endforeach(LIB)
 # Include the source
 add_subdirectory(src)
 
-find_package(PkgConfig REQUIRED)
-pkg_search_module(TANGO REQUIRED tango)
-
-if(TANGO_FOUND)
-    message(STATUS "Found tango version ${TANGO_VERSION} at ${TANGO_PREFIX}")
-endif(TANGO_FOUND)
-
 # Build Targets  -----------------------------------
 
 # This is the "object library" target: compiles the sources only once

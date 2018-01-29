@@ -124,7 +124,7 @@ public:
     /**
      * @brief Convert log level to string via internal static variables
     */
-    static std::string ToString(LoggingLevel level)
+    static std::string ToString()
     {
         // this vector of strings must match the const ints above
         static std::vector<std::string> as_strings = {"Disabled", "Error", "Warning", "Debug", "Trace"};
@@ -148,7 +148,7 @@ private:
         // and push the message to multiple sinks
         std::cout << now_tm->tm_hour << ":" << now_tm->tm_min << ":" << now_tm->tm_sec << ":"
                   << std::setfill('0') << std::setw(3) << milliseconds << " "
-                  << Log::ToString(_at_level) << " " << _str_stream.str();
+                  << Log::ToString() << " " << _str_stream.str();
 
         _str_stream.clear();
     }

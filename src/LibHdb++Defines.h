@@ -174,5 +174,6 @@ const std::string EXCEPTION_TYPE_ATTR_NAME = "Attribute Name Error";
 const std::string EXCEPTION_PREPARED_STATEMENT_ERROR = "Failed To Prepare Statement";
 const std::string EXCEPTION_UNKNOWN_QUERY = "Unknown Query Error";
 const std::string EXCEPTION_TYPE_TYPE_MISMATCH = "Type Mismatch";
+const std::string EXCEPTION_ATTR_CACHE = "Attribute cache failure";
 } // HDBPP
 #endif

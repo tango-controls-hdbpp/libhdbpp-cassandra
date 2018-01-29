@@ -34,8 +34,8 @@ namespace HDBPP
 */
 enum class Query
 {
-    FindAttrIdAndTtlInDb,
-    FindAttrIdTypeAndTtlInDb,
+    GetAttrIdAndTtl,
+    GetAttrDataType,
     FindLastEvent,
     InsertHistoryEvent,
     InsertParamAttribute,

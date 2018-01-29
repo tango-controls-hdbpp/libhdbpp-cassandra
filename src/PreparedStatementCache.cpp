@@ -104,7 +104,7 @@ const string &PreparedStatementCache::look_up_query_string(Query query)
 
         switch (query)
         {
-            case Query::FindAttrIdAndTtlInDb:
+            case Query::GetAttrIdAndTtl:
             {
                 query_str << "SELECT " << CONF_COL_ID << ", " << CONF_COL_TTL << " FROM "
                           << _keyspace_name << "." << CONF_TABLE_NAME << " WHERE " << CONF_COL_NAME
@@ -112,8 +112,9 @@ const string &PreparedStatementCache::look_up_query_string(Query query)
             }
             break;
 
-            case Query::FindAttrIdTypeAndTtlInDb:
+            case Query::GetAttrDataType:
             {
+                // TODO remove ID/TTL
                 query_str << "SELECT " << CONF_COL_ID << "," << CONF_COL_TYPE << "," << CONF_COL_TTL
                           << " FROM " << _keyspace_name << "." << CONF_TABLE_NAME << " WHERE "
                           << CONF_COL_NAME << " = ? AND " << CONF_COL_FACILITY << " = ?" << ends;
@@ -403,16 +404,16 @@ const string &PreparedStatementCache::query_id_to_str(Query query) const
 {
     switch (query)
     {
-        case Query::FindAttrIdAndTtlInDb:
+        case Query::GetAttrIdAndTtl:
         {
-            static string find_attr_id_and_ttl_in_db = "FindAttrIdAndTtlInDb";
+            static string find_attr_id_and_ttl_in_db = "GetAttrIdAndTtl";
             return find_attr_id_and_ttl_in_db;
         }
         break;
 
-        case Query::FindAttrIdTypeAndTtlInDb:
+        case Query::GetAttrDataType:
         {
-            static string find_attr_id_type_and_ttl_in_db = "FindAttrIdTypeAndTtlInDb";
+            static string find_attr_id_type_and_ttl_in_db = "GetAttrDataType";
             return find_attr_id_type_and_ttl_in_db;
         }
         break;

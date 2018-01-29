@@ -181,31 +181,14 @@ public:
 
 private:
 
-    enum FindAttrResult
-    {
-        AttrNotFound,
-        FoundAttrWithDifferentType,
-        FoundAttrWithSameType
-    };
-
-    // Parameters for an attribute that can be cached. Mapped to the attribute name
-    // in a map below.
-    struct AttributeParams
-    {
-        AttributeParams(CassUuid param_id, unsigned int param_ttl) : id(param_id), ttl(param_ttl) {}
-        CassUuid id;
-        unsigned int ttl;
-    };
-
     void connect_session();
     string remove_domain(string facility);
 
-    bool find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
+    void load_and_cache_uuid_and_ttl(AttributeName &attr_name);
+    unsigned int get_attr_ttl(AttributeName &attr_name);
+    CassUuid get_attr_uuid(AttributeName &attr_name);
 
-    FindAttrResult find_attr_id_type_and_ttl(AttributeName &attr_name,
-                                             CassUuid &ID,
-                                             string attr_type,
-                                             unsigned int &conf_ttl);
+    bool attr_type_exists(AttributeName &attr_name, const string &attr_type);
 
     bool find_last_event(const CassUuid &ID, string &last_event, AttributeName &attr_name);
 
@@ -218,7 +201,7 @@ private:
     void insert_member(AttributeName &attr_name);
     void insert_attr_name(AttributeName &attr_name);
 
-    void update_ttl(unsigned int ttl, AttributeName &attr_name);
+    void update_ttl(AttributeName &attr_name, unsigned int ttl);
 
     std::string get_config_param(const std::map<std::string, std::string> &conf, std::string param, bool mandatory);
     void set_cassandra_consistency_level(std::string consistency_level);

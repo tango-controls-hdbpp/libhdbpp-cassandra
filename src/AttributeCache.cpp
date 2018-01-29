@@ -18,7 +18,9 @@
    along with libhdb++cassandra.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "AttributeCache.h"
+#include "LibHdb++Defines.h"
 #include "Log.h"
+#include <tango.h>
 
 using namespace std;
 
@@ -26,105 +28,127 @@ namespace HDBPP
 {
 //=============================================================================
 //=============================================================================
-bool AttributeCache::find_attr_uuid(const AttributeName &attr_name, CassUuid &uuid)
+CassUuid AttributeCache::find_attr_uuid(const AttributeName &attr_name)
 {
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
-    {
-        uuid = _last_lookup_params->_uuid;
-        return true;
-    }
+        return _last_lookup_params->_uuid;
 
     auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
 
-    if (result != _attribute_cache.end())
+    if (result == _attribute_cache.end())
     {
-        // cache this lookup
-        _last_lookup_params = &((*result).second);
-        _last_lookup_name = attr_name.fully_qualified_attribute_name();
-
-        //return the uuid
-        uuid = (*result).second._uuid;
-        return true;
+        stringstream error_desc;
+        error_desc << "Error: no cached uuid for attribute: " << attr_name.fully_qualified_attribute_name() << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_ATTR_CACHE, error_desc.str().c_str(), __func__);
     }
 
-    return false;
+    // cache this lookup
+    _last_lookup_params = &((*result).second);
+    _last_lookup_name = attr_name.fully_qualified_attribute_name();
+
+    //return the uuid
+    return (*result).second._uuid;
 }
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::find_attr_ttl(const AttributeName &attr_name, unsigned int &ttl)
+unsigned int AttributeCache::find_attr_ttl(const AttributeName &attr_name)
 {
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
-    {
-        ttl = _last_lookup_params->_ttl;
-        return true;
-    }
+        return _last_lookup_params->_ttl;
 
     auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
 
-    if (result != _attribute_cache.end())
+    if (result == _attribute_cache.end())
     {
-        // cache this lookup
-        _last_lookup_params = &((*result).second);
-        _last_lookup_name = attr_name.fully_qualified_attribute_name();        
-
-        // return the ttl
-        ttl = (*result).second._ttl;
-        return true;
+        stringstream error_desc;
+        error_desc << "Error: no cached ttl for attribute: " << attr_name.fully_qualified_attribute_name() << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_ATTR_CACHE, error_desc.str().c_str(), __func__);
     }
 
-    return false;
+    // cache this lookup
+    _last_lookup_params = &((*result).second);
+    _last_lookup_name = attr_name.fully_qualified_attribute_name();        
+
+    // return the ttl
+    return (*result).second._ttl;
 }
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl)
+void AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl)
 {
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
-    {
         _last_lookup_params->_ttl = new_ttl;
-        return true;
-    }
 
     auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
 
-    if (result != _attribute_cache.end())
+    if (result == _attribute_cache.end())
     {
-        // cache this lookup
-        _last_lookup_params = &((*result).second);
-        _last_lookup_name = attr_name.fully_qualified_attribute_name();        
-
-        // return the ttl
-        (*result).second._ttl = new_ttl;
-        return true;
+        stringstream error_desc;
+        error_desc << "Error: attribute is not cached: " << attr_name.fully_qualified_attribute_name() << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_ATTR_CACHE, error_desc.str().c_str(), __func__);
     }
 
-    return false;    
+    // cache this lookup
+    _last_lookup_params = &((*result).second);
+    _last_lookup_name = attr_name.fully_qualified_attribute_name();        
+
+    LOG(Debug) << "Updated addtribute: " << attr_name << " ttl from: " << (*result).second._ttl 
+               << " to: " << new_ttl << endl;    
+
+    // update the ttl
+    (*result).second._ttl = new_ttl;
 }
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl)
+void AttributeCache::cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl)
 {
-    if (_attribute_cache.find(attr_name.fully_qualified_attribute_name()) == _attribute_cache.end())
+    if (_attribute_cache.find(attr_name.fully_qualified_attribute_name()) != _attribute_cache.end())
     {
-        _attribute_cache.insert(
-                make_pair(attr_name.fully_qualified_attribute_name(), AttributeParams(uuid, ttl)));
-
-        return true;
+        stringstream error_desc;
+        error_desc << "Error: attribute is already cached: " << attr_name.fully_qualified_attribute_name() << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_ATTR_CACHE, error_desc.str().c_str(), __func__);
     }
 
-    return false;
+    _attribute_cache.insert(
+            make_pair(attr_name.fully_qualified_attribute_name(), AttributeParams(uuid, ttl)));
+
+    auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
+
+    // cache this attribute for quick lookup
+    _last_lookup_params = &((*result).second);
+    _last_lookup_name = attr_name.fully_qualified_attribute_name();
+
+    char uuid_str[CASS_UUID_STRING_LENGTH];
+    cass_uuid_string(uuid, uuid_str);
+
+    LOG(Debug) << "Added addtribute: " << attr_name << " to cache with uuid: " << uuid_str 
+               << " and ttl: " << ttl << endl;    
 }
 
 //=============================================================================
 //=============================================================================
-bool AttributeCache::cached(const AttributeName &attr_name) const
+bool AttributeCache::cached(const AttributeName &attr_name)
 {
-    return _attribute_cache.find(attr_name.fully_qualified_attribute_name()) == _attribute_cache.end() ? false : true;
+     auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
+
+    if (result == _attribute_cache.end())
+        return false;
+
+    // cache this attribute for quick lookup
+    _last_lookup_params = &((*result).second);
+    _last_lookup_name = attr_name.fully_qualified_attribute_name();  
+
+    return true;
 }
 
 //=============================================================================

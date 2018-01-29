@@ -48,33 +48,31 @@ public:
 
     /**
      * @brief Lookup the attribute uuid in the cache
-     * @return True if found, false otherwise
+     * @return The Uuid if found, exception thrown otherwise
     */
-    bool find_attr_uuid(const AttributeName &attr_name, CassUuid &uuid);
+    CassUuid find_attr_uuid(const AttributeName &attr_name);
 
     /**
      * @brief Lookup the attribute TTL in the cache
-     * @return True if found, false otherwise
+     * @return The ttl if found, exception thrown otherwise
     */
-    bool find_attr_ttl(const AttributeName &attr_name, unsigned int &ttl);
+    unsigned int find_attr_ttl(const AttributeName &attr_name);
 
     /**
      * @brief Lookup the attribute TTL in the cache
-     * @return True if successful, false otherwise
     */
-    bool update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl);
+    void update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl);
 
     /**
      * @brief Cache an attributes uuid and ttl
-     * @return True if cached ok, false otherwise
     */
-    bool cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl);
+    void cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl);
 
     /**
      * @brief Check if an attribute is cached
      * @return True if cached, false otherwise
     */
-    bool cached(const AttributeName &attr_name) const;
+    bool cached(const AttributeName &attr_name);
 
     /**
      * @brief Check cache size

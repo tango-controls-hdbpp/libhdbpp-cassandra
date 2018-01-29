@@ -39,7 +39,7 @@ SCENARIO("Query string cache can grow when query requests are made", "[prepared 
 
         WHEN("Query string is requested")
         {
-            REQUIRE(cache.query_string(Query::FindAttrIdAndTtlInDb).size() != 0);
+            REQUIRE(cache.query_string(Query::GetAttrIdAndTtl).size() != 0);
 
             THEN("Query string cache grows by 1")
             {
@@ -47,7 +47,7 @@ SCENARIO("Query string cache can grow when query requests are made", "[prepared 
             }
             AND_WHEN("The same query string is requested again")
             {
-                REQUIRE(cache.query_string(Query::FindAttrIdAndTtlInDb).size() != 0);
+                REQUIRE(cache.query_string(Query::GetAttrIdAndTtl).size() != 0);
 
                 THEN("Query string cache does not grow")
                 {
@@ -83,7 +83,7 @@ SCENARIO("Statement cache can grow when statement requests are made", "[prepared
         {
             CassStatement *statement = NULL;
             
-            REQUIRE_NOTHROW(statement = cache.statement(Query::FindAttrIdAndTtlInDb));
+            REQUIRE_NOTHROW(statement = cache.statement(Query::GetAttrIdAndTtl));
             REQUIRE(statement != NULL);
 
             THEN("Statement cache grows by 1")
@@ -92,7 +92,7 @@ SCENARIO("Statement cache can grow when statement requests are made", "[prepared
             }
             AND_WHEN("The same statement is requested twice")
             {
-                REQUIRE_NOTHROW(statement = cache.statement(Query::FindAttrIdAndTtlInDb));
+                REQUIRE_NOTHROW(statement = cache.statement(Query::GetAttrIdAndTtl));
                 REQUIRE(statement != NULL);
 
                 THEN("Statement cache remains size 1")
@@ -127,7 +127,7 @@ SCENARIO("Statement cache can grow both query string and statement cache when re
 
         WHEN("A prepared statement is requested")
         {
-            REQUIRE(cache.statement(Query::FindAttrIdAndTtlInDb) != NULL);
+            REQUIRE(cache.statement(Query::GetAttrIdAndTtl) != NULL);
 
             THEN("Statement cache and query string cache grows by 1")
             {
@@ -171,38 +171,38 @@ SCENARIO("All enum queries requests provide valid query strings, statements and 
         REQUIRE(cache.statement_cache_size() == 0);
         REQUIRE(cache.query_cache_size() == 0);
 
-        WHEN("FindAttrIdAndTtlInDb")
+        WHEN("GetAttrIdAndTtl")
         {
             THEN("Statement is not null")
             {
                 CassStatement *statement = NULL;
-                REQUIRE_NOTHROW(statement = cache.statement(Query::FindAttrIdAndTtlInDb));
+                REQUIRE_NOTHROW(statement = cache.statement(Query::GetAttrIdAndTtl));
                 REQUIRE(statement != NULL);                     
             }
             THEN("Query is not empty")
             {
-                REQUIRE(cache.query_string(Query::FindAttrIdAndTtlInDb).empty() == false);
+                REQUIRE(cache.query_string(Query::GetAttrIdAndTtl).empty() == false);
             }            
             THEN("Query has debug string name")
             {
-                REQUIRE(cache.query_id_to_str(Query::FindAttrIdAndTtlInDb).empty() == false);
+                REQUIRE(cache.query_id_to_str(Query::GetAttrIdAndTtl).empty() == false);
             }            
         }
-        WHEN("FindAttrIdTypeAndTtlInDb")
+        WHEN("GetAttrDataType")
         {
             THEN("Statement is not null")
             {
                 CassStatement *statement = NULL;
-                REQUIRE_NOTHROW(statement = cache.statement(Query::FindAttrIdTypeAndTtlInDb));
+                REQUIRE_NOTHROW(statement = cache.statement(Query::GetAttrDataType));
                 REQUIRE(statement != NULL);
             }
             THEN("Query is not empty")
             {
-                REQUIRE(cache.query_string(Query::FindAttrIdTypeAndTtlInDb).empty() == false);
+                REQUIRE(cache.query_string(Query::GetAttrDataType).empty() == false);
             }            
             THEN("Query has debug string name")
             {
-                REQUIRE(cache.query_id_to_str(Query::FindAttrIdTypeAndTtlInDb).empty() == false);
+                REQUIRE(cache.query_id_to_str(Query::GetAttrDataType).empty() == false);
             }
         }
         WHEN("FindLastEvent")
@@ -395,7 +395,7 @@ SCENARIO("Freeing the cache", "[prepared statements]")
     GIVEN("A prepared statement cache with some cached query strings and statements")
     {
         PreparedStatementCache cache(db.get()->session(), KEYSPACE);
-        REQUIRE(cache.statement(Query::FindAttrIdAndTtlInDb) != NULL);
+        REQUIRE(cache.statement(Query::GetAttrIdAndTtl) != NULL);
         REQUIRE(cache.statement(Query::UpdateTtl) != NULL);
 
         WHEN("Cache freed")

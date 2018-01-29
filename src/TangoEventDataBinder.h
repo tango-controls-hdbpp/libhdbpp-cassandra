@@ -183,6 +183,7 @@ bool TangoEventDataBinder::extract_value(Tango::EventData *data,
                                          ExtractType extract_type,
                                          vector<T> &val)
 {
+    (void)data_format; // fix warning
     bool extract_success = false;
 
     if (extract_type == ExtractType::ExtractRead)
