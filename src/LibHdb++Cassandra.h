@@ -184,7 +184,7 @@ private:
     void connect_session();
     string remove_domain(string facility);
 
-    void load_and_cache_uuid_and_ttl(AttributeName &attr_name);
+    void load_and_cache_attr(AttributeName &attr_name);
     unsigned int get_attr_ttl(AttributeName &attr_name);
     CassUuid get_attr_uuid(AttributeName &attr_name);
 

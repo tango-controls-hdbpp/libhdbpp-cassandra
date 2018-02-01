@@ -188,7 +188,7 @@ void HdbPPCassandra::connect_session()
 
 //=============================================================================
 //=============================================================================
-void HdbPPCassandra::load_and_cache_uuid_and_ttl(AttributeName &attr_name)
+void HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
@@ -291,7 +291,7 @@ void HdbPPCassandra::load_and_cache_uuid_and_ttl(AttributeName &attr_name)
 unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
 {
     if (!_attr_cache.cached(attr_name))
-        load_and_cache_uuid_and_ttl(attr_name);
+        load_and_cache_attr(attr_name);
 
     return _attr_cache.find_attr_ttl(attr_name);
 }
@@ -301,7 +301,7 @@ unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
 CassUuid HdbPPCassandra::get_attr_uuid(AttributeName &attr_name)
 {
     if( _attr_cache.cached(attr_name) == false)
-        load_and_cache_uuid_and_ttl(attr_name);
+        load_and_cache_attr(attr_name);
 
     return _attr_cache.find_attr_uuid(attr_name);
 }
@@ -1083,6 +1083,9 @@ void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing update tll query",
                                 _prepared_statements->query_id_to_str(Query::UpdateTtl), rc, __func__);
+
+    if (!_attr_cache.cached(attr_name))
+        load_and_cache_attr(attr_name);
 
     _attr_cache.update_attr_ttl(attr_name, ttl);
     TRACE_EXIT;
