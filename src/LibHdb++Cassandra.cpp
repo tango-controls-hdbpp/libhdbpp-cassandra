@@ -188,7 +188,7 @@ void HdbPPCassandra::connect_session()
 
 //=============================================================================
 //=============================================================================
-void HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
+bool HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 {
     TRACE_ENTER;
 
@@ -213,6 +213,7 @@ void HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 
     const CassResult *result = cass_future_get_result(future);
     CassIterator *iterator = cass_iterator_from_result(result);
+    bool ret = false;
 
     if (cass_iterator_next(iterator))
     {
@@ -265,18 +266,12 @@ void HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
         // now cache the details into the attribute cache, this will
         // save future calls to the database
         _attr_cache.cache_attribute(attr_name, uuid, ttl);
+        ret = true;
     }
     else
     {
-        cass_result_free(result);
-        cass_iterator_free(iterator);
-        cass_future_free(future);
-        cass_statement_free(statement);
-
-        stringstream error_desc;
-        error_desc << "ERROR: Could not find ttl/uuid in HDB++ configuration for attribute: " << attr_name << ends;
-        LOG(Error) << error_desc.str() << endl;
-        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
+        LOG(Debug) << "NO RESULT in query: " << _prepared_statements->query_id_to_str(Query::GetAttrIdAndTtl) 
+                   << " for attribute: " << attr_name << endl;
     }
     
     cass_result_free(result);
@@ -284,6 +279,7 @@ void HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
     cass_future_free(future);
     cass_statement_free(statement);
     TRACE_EXIT;
+    return ret;
 }
 
 //=============================================================================
@@ -291,7 +287,15 @@ void HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
 {
     if (!_attr_cache.cached(attr_name))
-        load_and_cache_attr(attr_name);
+    {
+        if (!load_and_cache_attr(attr_name))
+        {
+            stringstream error_desc;
+            error_desc << "ERROR: Could not find ttl in HDB++ configuration for attribute: " << attr_name << ends;
+            LOG(Error) << error_desc.str() << endl;
+            Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
+        }
+    }
 
     return _attr_cache.find_attr_ttl(attr_name);
 }
@@ -300,8 +304,16 @@ unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
 //=============================================================================
 CassUuid HdbPPCassandra::get_attr_uuid(AttributeName &attr_name)
 {
-    if( _attr_cache.cached(attr_name) == false)
-        load_and_cache_attr(attr_name);
+    if( !_attr_cache.cached(attr_name))
+    {
+        if (!load_and_cache_attr(attr_name))
+        {
+            stringstream error_desc;
+            error_desc << "ERROR: Could not find uuid in HDB++ configuration for attribute: " << attr_name << ends;
+            LOG(Error) << error_desc.str() << endl;
+            Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
+        }
+    }
 
     return _attr_cache.find_attr_uuid(attr_name);
 }
@@ -799,6 +811,15 @@ void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl)
     LOG(Debug) << "Update: " << fqdn_attr_name << " TTL with parameter ttl = " << ttl << endl;
 
     AttributeName attr_name(fqdn_attr_name);
+
+    if (!_attr_cache.cached(attr_name) && !load_and_cache_attr(attr_name))
+    {
+        stringstream error_desc;
+        error_desc << "ERROR Attribute " << attr_name << " NOT FOUND in HDB++ configuration table" << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str(), __func__);
+    }
+
     update_ttl(attr_name, ttl);
     TRACE_EXIT;
 }
@@ -1072,6 +1093,16 @@ void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
 {
     TRACE_ENTER;
 
+    if (!_attr_cache.cached(attr_name))
+    {
+        // in this case, the ttl should exist, since the caller loaded the attribute
+        // from the database if it was not loaded, this should have cached the ttl
+        stringstream error_desc;
+        error_desc << "ERROR Attribute " << attr_name << " ttl is missing in the cache" << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_TYPE_ATTR_CACHE, error_desc.str().c_str(), __func__);
+    }
+
     CassStatement *statement = _prepared_statements->statement(Query::UpdateTtl);
     cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
     cass_statement_bind_int32_by_name(statement, CONF_COL_TTL.c_str(), ttl);
@@ -1083,9 +1114,6 @@ void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing update tll query",
                                 _prepared_statements->query_id_to_str(Query::UpdateTtl), rc, __func__);
-
-    if (!_attr_cache.cached(attr_name))
-        load_and_cache_attr(attr_name);
 
     _attr_cache.update_attr_ttl(attr_name, ttl);
     TRACE_EXIT;
