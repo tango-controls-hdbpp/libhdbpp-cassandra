@@ -9,13 +9,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-* Prepared statements implemented along with a string cache for the queries. This will speed up many repeated database calls.
+* Prepared statements implemented along with a string cache for the queries.
+  * Added as a new class, PreparedStatementsCache + Unit Tests.
 * Tango Events are now bound in a separate templated class to improve maintainability and reduce repeated code.
-* More unit tests and a mean to test database based calls via a simple ad hoc connection to a cassandra database. This infrastructure can open a connection to a cassandra cluster and prime the database ready for use with the create_hdb_cassandra.cql file.
+* More unit tests and a means to test database based calls via a simple ad hoc connection.
+  * Includes a DbCommands class and a CassandraConnection class.
+* AttributeCache class to separate out attribute caching functionality.
+  * Also removes code from main class.
+* New parameters, store_diag_time, added to interface.
 
 ### Changed
 
 * Lots more cleaning and documenting the code, such as todos now showing up in the doxygen documents.
+* Unit test binary now located under the build directory.
+* Library binary now located under the build directory
 
 ## [0.11.0] - 2018-01-05
 
