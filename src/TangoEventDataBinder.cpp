@@ -25,6 +25,7 @@
 #include <iostream>
 
 using namespace std;
+using namespace Utils;
 
 namespace HDBPP
 {
@@ -37,6 +38,8 @@ void TangoEventDataBinder::operator()(CassStatement *statement,
                                       int data_format,
                                       Tango::EventData *data)
 {
+    TRACE_LOGGER;
+
     // after selecting the correct type, the next functions start the template selection
     // and specialization to find the correct cassandra bind function
     switch (data_type)

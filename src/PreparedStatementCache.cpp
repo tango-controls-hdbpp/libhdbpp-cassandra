@@ -24,12 +24,16 @@
 
 #include <iostream>
 
+using namespace std;
+using namespace Utils;
+
 namespace HDBPP
 {
 //=============================================================================
 //=============================================================================
 CassStatement *PreparedStatementCache::statement(Query query)
 {
+    TRACE_LOGGER;
     CassStatement *statement = NULL;
     const string &query_id = query_id_to_str(query);
     auto statement_iter = _prepared_statement_cache.find(query_id);
@@ -55,6 +59,7 @@ CassStatement *PreparedStatementCache::statement(Query query)
 //=============================================================================
 CassStatement *PreparedStatementCache::statement(int data_type, int data_format, int data_write_type)
 {
+    TRACE_LOGGER;
     CassStatement *statement = NULL;
     string query_id = create_query_id_from_data(data_type, data_format, data_write_type);
 
@@ -82,6 +87,8 @@ CassStatement *PreparedStatementCache::statement(int data_type, int data_format,
 //=============================================================================
 void PreparedStatementCache::free_cache()
 {
+    TRACE_LOGGER;
+
     for (auto &iter : _prepared_statement_cache)
         cass_prepared_free(iter.second);
 
@@ -91,8 +98,218 @@ void PreparedStatementCache::free_cache()
 
 //=============================================================================
 //=============================================================================
+const string &PreparedStatementCache::query_string(int data_type, int data_format, int data_write_type)
+{
+    TRACE_LOGGER;
+    return look_up_query_string(data_type, data_format, data_write_type);
+}
+
+//=============================================================================
+//=============================================================================
+string PreparedStatementCache::get_table_name(int data_type, int data_format, int data_write_type) const
+{
+    TRACE_LOGGER;
+    string table_name = "att_";
+
+    // first add the type
+    table_name.append(data_format == Tango::SCALAR ? TYPE_SCALAR : TYPE_ARRAY).append("_");
+
+    // add the data type
+    switch (data_type)
+    {
+        case Tango::DEV_BOOLEAN:
+            table_name.append(TYPE_DEV_BOOLEAN).append("_");
+            break;
+        case Tango::DEV_UCHAR:
+            table_name.append(TYPE_DEV_UCHAR).append("_");
+            break;
+        case Tango::DEV_SHORT:
+            table_name.append(TYPE_DEV_SHORT).append("_");
+            break;
+        case Tango::DEV_USHORT:
+            table_name.append(TYPE_DEV_USHORT).append("_");
+            break;
+        case Tango::DEV_LONG:
+            table_name.append(TYPE_DEV_LONG).append("_");
+            break;
+        case Tango::DEV_ULONG:
+            table_name.append(TYPE_DEV_ULONG).append("_");
+            break;
+        case Tango::DEV_LONG64:
+            table_name.append(TYPE_DEV_LONG64).append("_");
+            break;
+        case Tango::DEV_ULONG64:
+            table_name.append(TYPE_DEV_ULONG64).append("_");
+            break;
+        case Tango::DEV_FLOAT:
+            table_name.append(TYPE_DEV_FLOAT).append("_");
+            break;
+        case Tango::DEV_DOUBLE:
+            table_name.append(TYPE_DEV_DOUBLE).append("_");
+            break;
+        case Tango::DEV_STRING:
+            table_name.append(TYPE_DEV_STRING).append("_");
+            break;
+        case Tango::DEV_STATE:
+            table_name.append(TYPE_DEV_STATE).append("_");
+            break;
+        case Tango::DEV_ENCODED:
+            table_name.append(TYPE_DEV_ENCODED).append("_");
+            break;
+        default:
+            stringstream error_desc;
+            error_desc << "(" << data_type << ", ...): Type not supported" << ends;
+            LOG(Error) << error_desc.str() << endl;
+            Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR, error_desc.str(), __func__);
+    }
+
+    // finally the write type
+    table_name.append(data_write_type == Tango::READ ? TYPE_RO : TYPE_RW);
+
+    return table_name;
+}
+
+//=============================================================================
+//=============================================================================
+const string &PreparedStatementCache::query_id_to_str(Query query) const
+{
+    TRACE_LOGGER;
+
+    switch (query)
+    {
+        case Query::GetAttrIdAndTtl:
+        {
+            static string find_attr_id_and_ttl_in_db = "GetAttrIdAndTtl";
+            return find_attr_id_and_ttl_in_db;
+        }
+        break;
+
+        case Query::GetAttrDataType:
+        {
+            static string find_attr_id_type_and_ttl_in_db = "GetAttrDataType";
+            return find_attr_id_type_and_ttl_in_db;
+        }
+        break;
+
+        case Query::FindLastEvent:
+        {
+            static string find_last_event = "FindLastEvent";
+            return find_last_event;
+        }
+        break;
+
+        case Query::InsertHistoryEvent:
+        {
+            static string insert_history_event = "InsertHistoryEvent";
+            return insert_history_event;
+        }
+        break;
+
+        case Query::InsertParamAttribute:
+        {
+            static string insert_parameter_attribute = "InsertParamAttribute";
+            return insert_parameter_attribute;
+        }
+        break;
+
+        case Query::InsertAttributeConf:
+        {
+            static string insert_attribute_conf = "InsertAttributeConf";
+            return insert_attribute_conf;
+        }
+        break;
+
+        case Query::InsertDomain:
+        {
+            static string insert_domain = "InsertDomain";
+            return insert_domain;
+        }
+        break;
+
+        case Query::InsertFamily:
+        {
+            static string insert_family = "InsertFamily";
+            return insert_family;
+        }
+        break;
+
+        case Query::InsertMember:
+        {
+            static string insert_member = "InsertMember";
+            return insert_member;
+        }
+        break;
+
+        case Query::InsertName:
+        {
+            static string insert_name = "InsertName";
+            return insert_name;
+        }
+        break;
+
+        case Query::UpdateTtl:
+        {
+            static string update_ttl = "UpdateTtl";
+            return update_ttl;
+        }
+        break;
+
+        default:
+        {
+            stringstream error_desc;
+            error_desc << "Unknown query type: << " << static_cast<int>(query) << ends;
+            LOG(Error) << error_desc.str() << endl;
+            Tango::Except::throw_exception(EXCEPTION_UNKNOWN_QUERY, error_desc.str(), __func__);
+        }
+    }
+
+    // to keep the compiler happy, we should never reach here
+    static string error = "Unknown";
+    return error;
+}
+
+//=============================================================================
+//=============================================================================
+string PreparedStatementCache::query_id_to_str(int data_type, int data_format, int data_write_type) const
+{
+    TRACE_LOGGER;
+    return create_query_id_from_data(data_type, data_format, data_write_type);
+}
+
+//=============================================================================
+//=============================================================================
+int PreparedStatementCache::get_insert_attr_ttl_bind_position(int data_write_type) const
+{
+    // this is ugly ugly ugly, but we can not bind the ttl by name in a
+    // statement that contains USING TLL ?. We are forced to bind by its
+    // position. To work around this for the InsertAttr_ queries, we simply
+    // calculate its point and feed it back to the main library.
+
+    // there are two scenarios (now we have condensed the statement), the
+    // InsertAttr_ type query has 10 bind points in the string, then an
+    // additional one or two based on data_write_type and finally the
+    // ttl bind point. This means the ttl is either 11 or 12 based on the
+    // data_write_type value. We can boil it down to a simple return below:
+
+    // 9 bind points before the data write type
+    int bind_point = 9;
+
+    if (data_write_type != Tango::WRITE)
+        bind_point++;
+
+    if (data_write_type != Tango::READ)
+        bind_point++;
+
+    // add one to get us to the ttl bind point
+    bind_point++;
+    return bind_point;
+}
+
+//=============================================================================
+//=============================================================================
 const string &PreparedStatementCache::look_up_query_string(Query query)
 {
+    TRACE_LOGGER;
     const string &query_id = query_id_to_str(query);
     auto query_iter = _query_cache.find(query_id);
 
@@ -229,6 +446,7 @@ const string &PreparedStatementCache::look_up_query_string(Query query)
 
 const string &PreparedStatementCache::look_up_query_string(int data_type, int data_format, int data_write_type)
 {
+    TRACE_LOGGER;
     string query_id = create_query_id_from_data(data_type, data_format, data_write_type);
     auto query_iter = _query_cache.find(query_id);
 
@@ -273,16 +491,11 @@ const string &PreparedStatementCache::look_up_query_string(int data_type, int da
 
 //=============================================================================
 //=============================================================================
-const string &PreparedStatementCache::query_string(int data_type, int data_format, int data_write_type)
-{
-    return look_up_query_string(data_type, data_format, data_write_type);
-}
-
-//=============================================================================
-//=============================================================================
 CassStatement *PreparedStatementCache::create_and_cache_prepared_object(const string &query_id,
                                                                         const string &query_str)
 {
+    TRACE_LOGGER;
+
     // create a prepared statement for this query
     CassFuture *prepare_future = cass_session_prepare(_session, query_str.c_str());
 
@@ -319,68 +532,6 @@ CassStatement *PreparedStatementCache::create_and_cache_prepared_object(const st
 
 //=============================================================================
 //=============================================================================
-string PreparedStatementCache::get_table_name(int data_type, int data_format, int data_write_type) const
-{
-    string table_name = "att_";
-
-    // first add the type
-    table_name.append(data_format == Tango::SCALAR ? TYPE_SCALAR : TYPE_ARRAY).append("_");
-
-    // add the data type
-    switch (data_type)
-    {
-        case Tango::DEV_BOOLEAN:
-            table_name.append(TYPE_DEV_BOOLEAN).append("_");
-            break;
-        case Tango::DEV_UCHAR:
-            table_name.append(TYPE_DEV_UCHAR).append("_");
-            break;
-        case Tango::DEV_SHORT:
-            table_name.append(TYPE_DEV_SHORT).append("_");
-            break;
-        case Tango::DEV_USHORT:
-            table_name.append(TYPE_DEV_USHORT).append("_");
-            break;
-        case Tango::DEV_LONG:
-            table_name.append(TYPE_DEV_LONG).append("_");
-            break;
-        case Tango::DEV_ULONG:
-            table_name.append(TYPE_DEV_ULONG).append("_");
-            break;
-        case Tango::DEV_LONG64:
-            table_name.append(TYPE_DEV_LONG64).append("_");
-            break;
-        case Tango::DEV_ULONG64:
-            table_name.append(TYPE_DEV_ULONG64).append("_");
-            break;
-        case Tango::DEV_FLOAT:
-            table_name.append(TYPE_DEV_FLOAT).append("_");
-            break;
-        case Tango::DEV_DOUBLE:
-            table_name.append(TYPE_DEV_DOUBLE).append("_");
-            break;
-        case Tango::DEV_STRING:
-            table_name.append(TYPE_DEV_STRING).append("_");
-            break;
-        case Tango::DEV_STATE:
-            table_name.append(TYPE_DEV_STATE).append("_");
-            break;
-        case Tango::DEV_ENCODED:
-            table_name.append(TYPE_DEV_ENCODED).append("_");
-            break;
-        default:
-            stringstream error_desc;
-            error_desc << "(" << data_type << ", ...): Type not supported" << ends;
-            LOG(Error) << error_desc.str() << endl;
-            Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR, error_desc.str(), __func__);
-    }
-
-    // finally the write type
-    table_name.append(data_write_type == Tango::READ ? TYPE_RO : TYPE_RW);
-
-    return table_name;
-}
-
 string PreparedStatementCache::create_query_id_from_data(int data_type, int data_format, int data_write_type) const
 {
     // since this is a special case not using the enums, we need to build a string to
@@ -396,139 +547,6 @@ void PreparedStatementCache::cache_query_string(const string &query_id, const st
     _query_cache[query_id] = query_string;
     LOG(Debug) << "Cached the query string: " << query_string << endl;
     LOG(Debug) << "Query cache is now: " << _query_cache.size() << endl;
-}
-
-//=============================================================================
-//=============================================================================
-const string &PreparedStatementCache::query_id_to_str(Query query) const
-{
-    switch (query)
-    {
-        case Query::GetAttrIdAndTtl:
-        {
-            static string find_attr_id_and_ttl_in_db = "GetAttrIdAndTtl";
-            return find_attr_id_and_ttl_in_db;
-        }
-        break;
-
-        case Query::GetAttrDataType:
-        {
-            static string find_attr_id_type_and_ttl_in_db = "GetAttrDataType";
-            return find_attr_id_type_and_ttl_in_db;
-        }
-        break;
-
-        case Query::FindLastEvent:
-        {
-            static string find_last_event = "FindLastEvent";
-            return find_last_event;
-        }
-        break;
-
-        case Query::InsertHistoryEvent:
-        {
-            static string insert_history_event = "InsertHistoryEvent";
-            return insert_history_event;
-        }
-        break;
-
-        case Query::InsertParamAttribute:
-        {
-            static string insert_parameter_attribute = "InsertParamAttribute";
-            return insert_parameter_attribute;
-        }
-        break;
-
-        case Query::InsertAttributeConf:
-        {
-            static string insert_attribute_conf = "InsertAttributeConf";
-            return insert_attribute_conf;
-        }
-        break;
-
-        case Query::InsertDomain:
-        {
-            static string insert_domain = "InsertDomain";
-            return insert_domain;
-        }
-        break;
-
-        case Query::InsertFamily:
-        {
-            static string insert_family = "InsertFamily";
-            return insert_family;
-        }
-        break;
-
-        case Query::InsertMember:
-        {
-            static string insert_member = "InsertMember";
-            return insert_member;
-        }
-        break;
-
-        case Query::InsertName:
-        {
-            static string insert_name = "InsertName";
-            return insert_name;
-        }
-        break;
-
-        case Query::UpdateTtl:
-        {
-            static string update_ttl = "UpdateTtl";
-            return update_ttl;
-        }
-        break;
-
-        default:
-        {
-            stringstream error_desc;
-            error_desc << "Unknown query type: << " << static_cast<int>(query) << ends;
-            LOG(Error) << error_desc.str() << endl;
-            Tango::Except::throw_exception(EXCEPTION_UNKNOWN_QUERY, error_desc.str(), __func__);
-        }
-    }
-
-    // to keep the compiler happy, we should never reach here
-    static string error = "Unknown";
-    return error;
-}
-
-//=============================================================================
-//=============================================================================
-string PreparedStatementCache::query_id_to_str(int data_type, int data_format, int data_write_type) const
-{
-    return create_query_id_from_data(data_type, data_format, data_write_type);
-}
-
-//=============================================================================
-//=============================================================================
-int PreparedStatementCache::get_insert_attr_ttl_bind_position(int data_write_type) const
-{
-    // this is ugly ugly ugly, but we can not bind the ttl by name in a
-    // statement that contains USING TLL ?. We are forced to bind by its
-    // position. To work around this for the InsertAttr_ queries, we simply
-    // calculate its point and feed it back to the main library.
-
-    // there are two scenarios (now we have condensed the statement), the
-    // InsertAttr_ type query has 10 bind points in the string, then an
-    // additional one or two based on data_write_type and finally the
-    // ttl bind point. This means the ttl is either 11 or 12 based on the
-    // data_write_type value. We can boil it down to a simple return below:
-
-    // 9 bind points before the data write type
-    int bind_point = 9;
-
-    if (data_write_type != Tango::WRITE)
-        bind_point++;
-
-    if (data_write_type != Tango::READ)
-        bind_point++;
-
-    // add one to get us to the ttl bind point
-    bind_point++;
-    return bind_point;
 }
 
 //=============================================================================

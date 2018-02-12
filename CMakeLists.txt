@@ -49,8 +49,13 @@ option(HDBPP_CASS_BUILD_STATIC "Build static library" OFF)
 option(HDBPP_CASS_BUILD_TESTS "Build unit tests" OFF)
 option(HDBPP_CASS_INSTALL_SCRIPTS "Install scripts and utility files on install" OFF)
 option(HDBPP_CASS_DEV_INSTALL "Install development files" OFF)
+option(HDBPP_CASS_ENABLE_TRACING "Enable tracing on all function calls" OFF)
 
-# Debug the flags
+if(HDBPP_CASS_ENABLE_TRACING)
+    message(STATUS "Enabled function tracing for tts_library")
+    set(HDBPP_CASS_ENABLE_DEBUG ON)
+endif(HDBPP_CASS_ENABLE_TRACING)
+
 if(HDBPP_CASS_DEV_INSTALL)
     message(STATUS "Development install requested")
 endif(HDBPP_CASS_DEV_INSTALL)
@@ -142,8 +147,12 @@ add_library(object_library OBJECT ${SRC_FILES})
 target_compile_options(object_library PRIVATE -fPIC)
 set_property(TARGET ${OBJECT_LIBRARY} PROPERTY POSITION_INDEPENDENT_CODE 1)
 
-target_compile_options(object_library 
-    PUBLIC -std=c++11 -Wall -Wextra)
+target_compile_options(object_library PUBLIC -std=c++11 -Wall -Wextra)
+target_compile_definitions(object_library PUBLIC -DDEBUG_ENABLED)
+
+if(HDBPP_CASS_ENABLE_TRACING)
+    target_compile_definitions(object_library PUBLIC -DTRACE_ENABLED)
+endif(HDBPP_CASS_ENABLE_TRACING)
 
 target_include_directories(object_library 
     PUBLIC ${HDBPP_CASS_INCLUDE_PATHS}

@@ -23,6 +23,7 @@
 #include <tango.h>
 
 using namespace std;
+using namespace Utils;
 
 namespace HDBPP
 {
@@ -30,6 +31,9 @@ namespace HDBPP
 //=============================================================================
 CassUuid AttributeCache::find_attr_uuid(const AttributeName &attr_name)
 {
+    TRACE_LOGGER;
+    LOG(Debug) << "Requesting uuid for attr: " << attr_name.fully_qualified_attribute_name() << endl;
+
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
         return _last_lookup_params->_uuid;
@@ -56,6 +60,9 @@ CassUuid AttributeCache::find_attr_uuid(const AttributeName &attr_name)
 //=============================================================================
 unsigned int AttributeCache::find_attr_ttl(const AttributeName &attr_name)
 {
+    TRACE_LOGGER;
+    LOG(Debug) << "Requesting ttl for attr: " << attr_name.fully_qualified_attribute_name() << endl;
+
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
         return _last_lookup_params->_ttl;
@@ -82,6 +89,9 @@ unsigned int AttributeCache::find_attr_ttl(const AttributeName &attr_name)
 //=============================================================================
 void AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl)
 {
+    TRACE_LOGGER;
+    LOG(Debug) << "Updating ttl for attr: " << attr_name.fully_qualified_attribute_name() << endl;
+
     // First look into the cached attribute
     if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
         _last_lookup_params->_ttl = new_ttl;
@@ -111,6 +121,8 @@ void AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned in
 //=============================================================================
 void AttributeCache::cache_attribute(const AttributeName &attr_name, const CassUuid &uuid, unsigned int ttl)
 {
+    TRACE_LOGGER;
+
     if (_attribute_cache.find(attr_name.fully_qualified_attribute_name()) != _attribute_cache.end())
     {
         stringstream error_desc;
@@ -131,7 +143,7 @@ void AttributeCache::cache_attribute(const AttributeName &attr_name, const CassU
     char uuid_str[CASS_UUID_STRING_LENGTH];
     cass_uuid_string(uuid, uuid_str);
 
-    LOG(Debug) << "Added addtribute: " << attr_name << " to cache with uuid: " << uuid_str 
+    LOG(Debug) << "Cached addtribute: " << attr_name << " to cache with uuid: " << uuid_str 
                << " and ttl: " << ttl << endl;    
 }
 
@@ -139,7 +151,8 @@ void AttributeCache::cache_attribute(const AttributeName &attr_name, const CassU
 //=============================================================================
 bool AttributeCache::cached(const AttributeName &attr_name)
 {
-     auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
+    TRACE_LOGGER;
+    auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
 
     if (result == _attribute_cache.end())
         return false;

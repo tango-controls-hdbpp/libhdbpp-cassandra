@@ -65,8 +65,8 @@ The build system is CMake therefore standard CMake flags can be used to influenc
 | HDBPP_CASS_BUILD_STATIC | OFF | Build the static library. This will also be installed if make install is run. |
 | HDBPP_CASS_BUILD_TESTS | OFF | Build unit tests |
 | HDBPP_CASS_DEV_INSTALL | OFF | Install development files and libraries |
-| HDBPP_CASS_INSTALL_SCRIPTS | OFF | Install cql script to /usr/share/libdhb++cassandra |
-| HDBPP_CASS_ADDITIONAL_LIBS | | Cludge to allow additional libraries to be linked against the shared library |
+| HDBPP_CASS_INSTALL_SCRIPTS | OFF | Install cql scripts |
+| HDBPP_CASS_ENABLE_TRACING | OFF | Enabled function tracing debug |
 
 The following is a list of common useful CMake flags and their use:
 
@@ -179,4 +179,4 @@ After the build has completed, simply run:
 make install
 ```
 
-On installation the cql scripts under etc/ will be placed in /usr/shared/libhdb++cassandra/
+On installation the cql scripts under etc/ will be placed in /CMAKE_INSTALL_PREFIX/shared/libhdb++cassandra/

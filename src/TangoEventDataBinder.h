@@ -80,6 +80,7 @@ public:
                     Tango::EventData *data);
 
 private:
+
     enum ExtractType
     {
         ExtractRead,
@@ -154,7 +155,7 @@ void TangoEventDataBinder::do_extract_and_bind_value(CassStatement *statement,
         error_desc << "Failed to extract the attribute " << data->attr_name
                    << " from the Tango EventData. Possible type mismatch?" << ends;
 
-        LOG(Error) << error_desc.str() << endl;
+        LOG(Utils::Error) << error_desc.str() << endl;
         Tango::Except::throw_exception(EXCEPTION_TYPE_TYPE_MISMATCH, error_desc.str(), __func__);
     }
 
@@ -209,7 +210,7 @@ void TangoEventDataBinder::statement_bind(CassStatement *statement, const std::s
 
     std::stringstream error_desc;
     error_desc << "Unhandled bind request type, this type (unknown) is not supported" << ends;
-    LOG(Error) << error_desc.str() << endl;
+    LOG(Utils::Error) << error_desc.str() << endl;
     Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR, error_desc.str(), __func__);
 }
 
@@ -228,7 +229,7 @@ void TangoEventDataBinder::collection_append(CassCollection *read_values_list, T
 
     std::stringstream error_desc;
     error_desc << "Unhandled collection bind request type, this type (unknown) is not supported" << ends;
-    LOG(Error) << error_desc.str() << endl;
+    LOG(Utils::Error) << error_desc.str() << endl;
     Tango::Except::throw_exception(EXCEPTION_TYPE_UNSUPPORTED_ATTR, error_desc.str(), __func__);
 }
 

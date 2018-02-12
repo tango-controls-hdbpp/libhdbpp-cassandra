@@ -32,7 +32,7 @@
 
 namespace HDBPP
 {
-// forward declears
+// forward declare
 class PreparedStatementCache;
 
 /**
@@ -83,7 +83,11 @@ public:
      *        statements are executed with LOCAL_QUORUM consistency level.
      *      - store_diag_time: Either true to store the times or false to omit them.
      * - Debug:
-     *     - logging_enabled: Either true to enable command line debug, or false to disable
+     *     - logging_enabled: One of the following:
+     *          - ERROR: Error level logging
+     *          - WARNING: Warning level logging
+     *          - INFO: Info level logging
+     *          - DEBUG: Debug level logging (maximum logging)
      *     - cassandra_driver_log_level:  Cassandra logging level, see CassLogLevel in Datastax
      *       documentation. This must be one of the following values:
      *          - TRACE: Equivalent CASS_LOG_TRACE
@@ -96,7 +100,7 @@ public:
      *
      * @param configuration A list of configuration parameters to start the driver with.
      */
-    HdbPPCassandra(vector<string> configuration);
+    HdbPPCassandra(std::vector<std::string> configuration);
 
     /**
      * @brief HdbPPCassandra destructor
@@ -146,11 +150,7 @@ public:
      * @param  ttl The time to live in hour, 0 for infinity
      * @throw Tango::DevFailed
      */
-    virtual void configure_Attr(string fqdn_attr_name,
-                                int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                int format /*SCALAR, SPECTRUM, ..*/,
-                                int write_type /*READ, READ_WRITE, ..*/,
-                                unsigned int ttl);
+    virtual void configure_Attr(std::string fqdn_attr_name, int type, int format, int write_type, unsigned int ttl);
 
     /**
      * @brief Update the ttl value for an attribute.
@@ -162,7 +162,7 @@ public:
      * @param ttl The time to live in hour, 0 for infinity
      * @throw Tango::DevFailed
      */
-    virtual void updateTTL_Attr(string fqdn_attr_name, unsigned int ttl);
+    virtual void updateTTL_Attr(std::string fqdn_attr_name, unsigned int ttl);
 
     /**
     * @brief Record a start, Stop, Pause or Remove history event for an attribute.
@@ -177,24 +177,23 @@ public:
     * @param event
     * @throw Tango::DevFailed
     */
-    virtual void event_Attr(string fqdn_attr_name, unsigned char event);
+    virtual void event_Attr(std::string fqdn_attr_name, unsigned char event);
 
 private:
 
     void connect_session();
-    string remove_domain(string facility);
 
     bool load_and_cache_attr(AttributeName &attr_name);
     unsigned int get_attr_ttl(AttributeName &attr_name);
     CassUuid get_attr_uuid(AttributeName &attr_name);
 
-    bool attr_type_exists(AttributeName &attr_name, const string &attr_type);
+    bool attr_type_exists(AttributeName &attr_name, const std::string &attr_type);
 
-    bool find_last_event(const CassUuid &ID, string &last_event, AttributeName &attr_name);
+    bool find_last_event(const CassUuid &ID, std::string &last_event, AttributeName &attr_name);
 
-    void insert_history_event(const string &history_event_name, CassUuid att_conf_id);
+    void insert_history_event(const std::string &history_event_name, CassUuid att_conf_id);
 
-    void insert_attr_conf(AttributeName &attr_name, const string &data_type, CassUuid &uuid, unsigned int ttl = 0);
+    void insert_attr_conf(AttributeName &attr_name, const std::string &data_type, CassUuid &uuid, unsigned int ttl = 0);
 
     void insert_domain(AttributeName &attr_name);
     void insert_family(AttributeName &attr_name);
@@ -205,17 +204,19 @@ private:
 
     std::string get_config_param(const std::map<std::string, std::string> &conf, std::string param, bool mandatory);
     void set_cassandra_consistency_level(std::string consistency_level);
-    void set_cassandra_logging_level(string level);
+    void set_cassandra_logging_level(std::string level);
+    void set_library_logging_level(std::string level);
+    std::map<std::string, std::string> extract_config(std::vector<std::string> str, std::string separator);
+
     CassError execute_statement(CassStatement *statement);
-    void throw_execute_exception(string message, string query, CassError error, const char *origin);
-    void string_vector2map(vector<string> str, string separator, map<string, string> *results);
+    void throw_execute_exception(std::string message, std::string query, CassError error, const char *origin);
 
     CassCluster *_cass_cluster;
     CassSession *_cass_session;
     CassLogLevel _cassandra_logging_level;
     CassConsistency _consistency;
 
-    string _keyspace_name;
+    std::string _keyspace_name;
 
     // used to flag up whether the library will store the diagnostic timestamps,
     // setting to false via the configuration will save database space
@@ -242,7 +243,7 @@ public:
      * HdbPPCassandra.
      * @throw Tango::DevFailed
      */
-    virtual AbstractDB *create_db(vector<string> configuration);
+    virtual AbstractDB *create_db(std::vector<std::string> configuration);
 
     virtual ~HdbPPCassandraFactory() {}
 };

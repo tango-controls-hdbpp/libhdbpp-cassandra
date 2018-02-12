@@ -29,6 +29,9 @@
 #define LIB_BUILDTIME RELEASE " " __DATE__ " " __TIME__
 #endif
 
+using namespace std;
+using namespace Utils;
+
 // Some values that define how the driver functions. Moved to here to allow easy
 // tracking and updating in the future
 
@@ -48,21 +51,20 @@ namespace HDBPP
 //=============================================================================
 HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 {
-    // LOG(Debug)<<": VERSION: " << version_string << " file:" << __FILE__rev << endl;
-    map<string, string> libhdb_conf;
+    TRACE_LOGGER;
     string local_dc;
     string config;
 
     // defaults
-    Log::LogLevel() = Error;
+    LoggerClass::Log::LogLevel() = Error;
     cass_log_set_level(CASS_LOG_DISABLED);
 
     // convert the config vector to a map
-    string_vector2map(configuration, "=", &libhdb_conf);
+    auto libhdb_conf = extract_config(configuration, "=");
 
     // ---- logging_enabled optional config parameter ----
-    if(!(config = get_config_param(libhdb_conf, "logging_enabled", false)).empty())
-        config == "true" ? Log::LogLevel() = Debug : Log::LogLevel() = Error;
+    config = get_config_param(libhdb_conf, "logging_enabled", false);
+    set_library_logging_level(config);
 
     // ---- cassandra_driver_log_level optional config parameter ----
     if(!(config = get_config_param(libhdb_conf, "cassandra_driver_log_level", false)).empty())
@@ -81,7 +83,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     {
         local_dc = LOCAL_DC_DEFAULT;
 
-        LOG(Debug) << "Library configuration parameter local_dc is not defined. Defaulting to: " 
+        LOG(Info) << "Library configuration parameter local_dc is not defined. Defaulting to: " 
                    << LOCAL_DC_DEFAULT << endl;
     }
 
@@ -108,10 +110,10 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     }
     else if (user.empty() && !password.empty())
     {
-        LOG(Error) << "A password was provided for the Cassandra connection, but no user name was provided!"
+        LOG(Info) << "A password was provided for the Cassandra connection, but no user name was provided!"
                    << endl;
 
-        LOG(Error) << "Will try to connect anonymously" << endl;
+        LOG(Info) << "Will try to connect anonymously" << endl;
     }
     else
     {
@@ -132,7 +134,8 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
 //=============================================================================
 HdbPPCassandra::~HdbPPCassandra()
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
+    LOG(Debug) << "Destroying library" << endl;
 
     if (_cass_cluster)
     {
@@ -147,15 +150,13 @@ HdbPPCassandra::~HdbPPCassandra()
         cass_cluster_free(_cass_cluster);
         cass_session_free(_cass_session);
     }
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 void HdbPPCassandra::connect_session()
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     _cass_session = cass_session_new();
     CassFuture *future = cass_session_connect(_cass_session, _cass_cluster);
@@ -182,15 +183,13 @@ void HdbPPCassandra::connect_session()
 
     // create a prepared statement manager
     _prepared_statements = new PreparedStatementCache(_cass_session, _keyspace_name);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 bool HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::GetAttrIdAndTtl);
     cass_statement_set_consistency(statement, _consistency);
@@ -217,11 +216,6 @@ bool HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 
     if (cass_iterator_next(iterator))
     {
-        LOG(Debug) << "SUCCESS in query: "
-                   << _prepared_statements->query_id_to_str(Query::GetAttrIdAndTtl) << " ("
-                   << CONF_COL_NAME << "=" << attr_name.full_attribute_name() << ", "
-                   << CONF_COL_FACILITY << "=" << attr_name.tango_host_with_domain() << ")" << endl;
-
         CassUuid uuid;
         cass_int32_t ttl = 0;
 
@@ -278,7 +272,7 @@ bool HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
     cass_iterator_free(iterator);
     cass_future_free(future);
     cass_statement_free(statement);
-    TRACE_EXIT;
+
     return ret;
 }
 
@@ -286,6 +280,8 @@ bool HdbPPCassandra::load_and_cache_attr(AttributeName &attr_name)
 //=============================================================================
 unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
 {
+    TRACE_LOGGER;
+
     if (!_attr_cache.cached(attr_name))
     {
         if (!load_and_cache_attr(attr_name))
@@ -304,6 +300,8 @@ unsigned int HdbPPCassandra::get_attr_ttl(AttributeName &attr_name)
 //=============================================================================
 CassUuid HdbPPCassandra::get_attr_uuid(AttributeName &attr_name)
 {
+    TRACE_LOGGER;
+
     if( !_attr_cache.cached(attr_name))
     {
         if (!load_and_cache_attr(attr_name))
@@ -322,7 +320,7 @@ CassUuid HdbPPCassandra::get_attr_uuid(AttributeName &attr_name)
 //=============================================================================
 bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &attr_type)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::GetAttrDataType);
     cass_statement_set_consistency(statement, _consistency);
@@ -348,11 +346,6 @@ bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &at
 
     if (cass_iterator_next(iterator))
     {
-        LOG(Debug) << "SUCCESS in query: "
-                   << _prepared_statements->query_id_to_str(Query::GetAttrDataType) << " ("
-                   << CONF_COL_NAME << "=" << attr_name.full_attribute_name() << ", "
-                   << CONF_COL_FACILITY << "=" << attr_name.tango_host_with_domain() << ")" << endl;
-
         const CassRow *row = cass_iterator_get_row(iterator);
         const char *db_type_res;
         size_t db_type_res_length;
@@ -389,7 +382,6 @@ bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &at
                 << "-db_type=" << db_type << endl;
     }
 
-    TRACE_EXIT;
     return !db_type.empty();
 }
 
@@ -397,7 +389,7 @@ bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &at
 //=============================================================================
 bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, AttributeName &attr_name)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
     last_event = "??";
 
     CassStatement *statement = _prepared_statements->statement(Query::FindLastEvent);
@@ -422,9 +414,6 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
 
     if (cass_iterator_next(iterator))
     {
-        LOG(Debug) << "SUCCESS in query: " << _prepared_statements->query_id_to_str(Query::FindLastEvent)
-                   << endl;
-
         const CassRow *row = cass_iterator_get_row(iterator);
         const char *last_event_res;
         size_t last_event_res_length;
@@ -444,7 +433,6 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
         LOG(Debug) << "(" << attr_name << "): NO RESULT in query: "
                    << _prepared_statements->query_id_to_str(Query::FindLastEvent) << endl;
 
-    TRACE_EXIT;
     return found;
 }
 
@@ -452,7 +440,8 @@ bool HdbPPCassandra::find_last_event(const CassUuid &id, string &last_event, Att
 //=============================================================================
 void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_data_type)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
+    LOG(Debug) << "Insert for: " << data->attr_name << endl;
 
     if (data == NULL)
     {
@@ -583,31 +572,25 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(data_type, data_format, write_type),
                                 rc, __func__);
-
-    LOG(Debug) << "SUCCESS in query: "
-               << _prepared_statements->query_id_to_str(data_type, data_format, write_type)
-               << " with ttl = " << ttl << " data_type = " << data_type
-               << " data_format = " << data_format << " write_type = " << write_type << endl;
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 void HdbPPCassandra::insert_history_event(const string &history_event_name, CassUuid att_conf_id)
 {
-    TRACE_ENTER;
-
+    TRACE_LOGGER;
     char att_conf_id_str[CASS_UUID_STRING_LENGTH];
     cass_uuid_string(att_conf_id, &att_conf_id_str[0]);
-    LOG(Debug) << "(" << history_event_name << "," << att_conf_id_str << ": entering... " << endl;
+    LOG(Debug) << "Event: " << history_event_name << " for uuid: " << att_conf_id_str << endl;
 
     struct timespec ts;
+
     if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
     {
         /// @todo handle this error?
         perror("clock_gettime()");
     }
+
     int64_t current_time = ((int64_t)ts.tv_sec) * 1000;
     int current_time_us = ts.tv_nsec / 1000;
 
@@ -624,8 +607,6 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertHistoryEvent), rc,
                                 __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
@@ -633,7 +614,8 @@ void HdbPPCassandra::insert_history_event(const string &history_event_name, Cass
 void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventDataType ev_data_type)
 {
     (void)ev_data_type; // Fix warning
-    TRACE_ENTER;
+    TRACE_LOGGER;
+    LOG(Debug) << "Insert param for: " << data->attr_name << endl;
 
     if (data == NULL)
     {
@@ -731,15 +713,16 @@ void HdbPPCassandra::insert_param_Attr(Tango::AttrConfEventData *data, HdbEventD
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertParamAttribute), rc,
                                 __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 void HdbPPCassandra::configure_Attr(string name, int type, int format, int write_type, unsigned int ttl)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
+
+    LOG(Debug) << "Configure name: " << name << ", with type: " << type << ", format: " << format
+               << ", write_type: " << write_type << ", ttl: " << ttl << endl;
 
     AttributeName attr_name(name);
 
@@ -750,9 +733,6 @@ void HdbPPCassandra::configure_Attr(string name, int type, int format, int write
         LOG(Error) << error_desc.str() << endl;
         Tango::Except::throw_exception(EXCEPTION_TYPE_ATTR_FORMAT, error_desc.str().c_str(), __func__);
     }
-
-    LOG(Debug) << "name=" << name << " -> tango_host=" << attr_name.tango_host_with_domain()
-               << " attr_name=" << attr_name << endl;
 
     string data_type = _prepared_statements->get_table_name(type, format, write_type);
     
@@ -799,15 +779,13 @@ void HdbPPCassandra::configure_Attr(string name, int type, int format, int write
 
     // Insert into att_names table
     insert_attr_name(attr_name);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
     LOG(Debug) << "Update: " << fqdn_attr_name << " TTL with parameter ttl = " << ttl << endl;
 
     AttributeName attr_name(fqdn_attr_name);
@@ -821,14 +799,14 @@ void HdbPPCassandra::updateTTL_Attr(string fqdn_attr_name, unsigned int ttl)
     }
 
     update_ttl(attr_name, ttl);
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
+    LOG(Debug) << "Event for: " << fqdn_attr_name << ", event: " << event << endl;
 
     AttributeName attr_name(fqdn_attr_name);
     CassUuid uuid = get_attr_uuid(attr_name);
@@ -840,11 +818,13 @@ void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
         {
             string last_event;
             bool ret = find_last_event(uuid, last_event, attr_name);
+
             if (ret && last_event == EVENT_START)
             {
                 // It seems there was a crash
                 insert_history_event(EVENT_CRASH, uuid);
             }
+
             event_name = EVENT_START;
             break;
         }
@@ -873,50 +853,6 @@ void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
     }
 
     insert_history_event(event_name, uuid);
-    TRACE_EXIT;
-}
-
-//=============================================================================
-//=============================================================================
-string HdbPPCassandra::remove_domain(string str)
-{
-    string::size_type end1 = str.find(".");
-    if (end1 == string::npos)
-    {
-        return str;
-    }
-    else
-    {
-        string::size_type start = str.find("tango://");
-        if (start == string::npos)
-        {
-            start = 0;
-        }
-        else
-        {
-            start = 8; // tango:// len
-        }
-        string::size_type end2 = str.find(":", start);
-        if (end1 > end2) //'.' not in the tango host part
-            return str;
-        string th = str.substr(0, end1);
-        th += str.substr(end2, str.size() - end2);
-        return th;
-    }
-}
-
-//=============================================================================
-//=============================================================================
-void HdbPPCassandra::string_vector2map(vector<string> str, string separator, map<string, string> *results)
-{
-    for (vector<string>::iterator it = str.begin(); it != str.end(); it++)
-    {
-        string::size_type found_eq;
-        found_eq = it->find_first_of(separator);
-
-        if (found_eq != string::npos && found_eq > 0)
-            results->insert(make_pair(it->substr(0, found_eq), it->substr(found_eq + 1)));
-    }
 }
 
 //=============================================================================
@@ -934,7 +870,7 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
                                       CassUuid &uuid,
                                       unsigned int ttl)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertAttributeConf);
     cass_statement_set_consistency(statement, _consistency);
@@ -957,8 +893,6 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertAttributeConf), rc,
                                 __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
@@ -971,7 +905,7 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
 //=============================================================================
 void HdbPPCassandra::insert_domain(AttributeName &attr_name)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertDomain);
     cass_statement_set_consistency(statement, _consistency);
@@ -986,8 +920,6 @@ void HdbPPCassandra::insert_domain(AttributeName &attr_name)
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertDomain), rc, __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
@@ -1000,10 +932,10 @@ void HdbPPCassandra::insert_domain(AttributeName &attr_name)
 //=============================================================================
 void HdbPPCassandra::insert_family(AttributeName &attr_name)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertFamily);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_string_by_name(statement, FAMILIES_COL_FACILITY.c_str(),
                                        attr_name.tango_host_with_domain().c_str());
     cass_statement_bind_string_by_name(statement, FAMILIES_COL_DOMAIN.c_str(), attr_name.domain().c_str());
@@ -1014,8 +946,6 @@ void HdbPPCassandra::insert_family(AttributeName &attr_name)
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertFamily), rc, __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
@@ -1028,10 +958,10 @@ void HdbPPCassandra::insert_family(AttributeName &attr_name)
 //=============================================================================
 void HdbPPCassandra::insert_member(AttributeName &attr_name)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertMember);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, _consistency);
 
     cass_statement_bind_string_by_name(statement, MEMBERS_COL_FACILITY.c_str(),
                                        attr_name.tango_host_with_domain().c_str());
@@ -1045,8 +975,6 @@ void HdbPPCassandra::insert_member(AttributeName &attr_name)
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertMember), rc, __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
@@ -1059,10 +987,10 @@ void HdbPPCassandra::insert_member(AttributeName &attr_name)
 //=============================================================================
 void HdbPPCassandra::insert_attr_name(AttributeName &attr_name)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertName);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
     cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_DOMAIN.c_str(), attr_name.domain().c_str());
     cass_statement_bind_string_by_name(statement, ATT_NAMES_COL_FAMILY.c_str(), attr_name.family().c_str());
@@ -1074,8 +1002,6 @@ void HdbPPCassandra::insert_attr_name(AttributeName &attr_name)
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing insert query",
                                 _prepared_statements->query_string(Query::InsertName), rc, __func__);
-
-    TRACE_EXIT;
 }
 
 //=============================================================================
@@ -1091,7 +1017,7 @@ void HdbPPCassandra::insert_attr_name(AttributeName &attr_name)
 //=============================================================================
 void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     if (!_attr_cache.cached(attr_name))
     {
@@ -1104,7 +1030,7 @@ void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
     }
 
     CassStatement *statement = _prepared_statements->statement(Query::UpdateTtl);
-    cass_statement_set_consistency(statement, CASS_CONSISTENCY_LOCAL_QUORUM);
+    cass_statement_set_consistency(statement, _consistency);
     cass_statement_bind_int32_by_name(statement, CONF_COL_TTL.c_str(), ttl);
     cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(), attr_name.tango_host_with_domain().c_str());
     cass_statement_bind_string_by_name(statement, CONF_COL_NAME.c_str(), attr_name.full_attribute_name().c_str());
@@ -1116,14 +1042,13 @@ void HdbPPCassandra::update_ttl(AttributeName &attr_name, unsigned int ttl)
                                 _prepared_statements->query_id_to_str(Query::UpdateTtl), rc, __func__);
 
     _attr_cache.update_attr_ttl(attr_name, ttl);
-    TRACE_EXIT;
 }
 
 //=============================================================================
 //=============================================================================
 CassError HdbPPCassandra::execute_statement(CassStatement *statement)
 {
-    TRACE_ENTER;
+    TRACE_LOGGER;
 
     CassFuture *future = cass_session_execute(_cass_session, statement);
     cass_future_wait(future);
@@ -1132,7 +1057,6 @@ CassError HdbPPCassandra::execute_statement(CassStatement *statement)
     cass_future_free(future);
     cass_statement_free(statement);
 
-    TRACE_EXIT;
     return rc;
 }
 
@@ -1183,16 +1107,37 @@ void HdbPPCassandra::set_cassandra_logging_level(string level)
         LOG(Error) << "Log level set by default to: DISABLED" << endl;
     }
 
-    LOG(Debug) << "Cassandra driver logging set to: ";
+    LOG(Info) << "Cassandra driver logging set to: ";
 
     if (_cassandra_logging_level == CASS_LOG_DISABLED)
     {
-        LOG(Debug) << "DISABLED" << endl;
+        LOG(Info) << "DISABLED" << endl;
     }
     else
     {
-        LOG(Debug) << cass_log_level_string(_cassandra_logging_level) << endl;
+        LOG(Info) << cass_log_level_string(_cassandra_logging_level) << endl;
     }
+}
+
+//=============================================================================
+//=============================================================================
+void HdbPPCassandra::set_library_logging_level(std::string level)
+{
+    if(level == "ERROR")
+        LoggerClass::Log::LogLevel() = Error;
+    else if(level == "WARNING")
+        LoggerClass::Log::LogLevel() = Warning;
+    else if(level == "INFO")
+        LoggerClass::Log::LogLevel() = Info;
+    else if(level == "DEBUG")
+        LoggerClass::Log::LogLevel() = Debug;
+    else
+    {
+        LOG(Error) << "Invalid or no logging logging level selected, setting to default: ERROR" << endl;
+        LoggerClass::Log::LogLevel() = Error;
+    }
+
+    LOG(Info) << "Library logging level set to: " << level << endl;
 }
 
 //=============================================================================
@@ -1248,16 +1193,34 @@ string HdbPPCassandra::get_config_param(const map<string, string> &conf, string 
     }
     else if(iter != conf.end())
     {
-        LOG(Debug) << "Configuration: " << param << " set to: " << (*iter).second << endl;
+        LOG(Info) << "Configuration: " << param << " set to: " << (*iter).second << endl;
     }
     else
     {
-        LOG(Debug) << "Configuration: " << param << " not found" << endl;
+        LOG(Info) << "Configuration: " << param << " not found" << endl;
     }
 
     // for non-mandatory config params that have not been set, just return
     // an empty string
     return iter ==  conf.end() ? "" : (*iter).second;
+}
+
+//=============================================================================
+//=============================================================================
+map<string, string> HdbPPCassandra::extract_config(vector<string> str, string separator)
+{
+    map<string, string> results;
+
+    for (vector<string>::iterator it = str.begin(); it != str.end(); it++)
+    {
+        string::size_type found_eq;
+        found_eq = it->find_first_of(separator);
+
+        if (found_eq != string::npos && found_eq > 0)
+            results.insert(make_pair(it->substr(0, found_eq), it->substr(found_eq + 1)));
+    }
+
+    return results;
 }
 
 //=============================================================================

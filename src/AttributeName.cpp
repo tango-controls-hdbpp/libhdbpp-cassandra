@@ -26,6 +26,7 @@
 #include <netdb.h> //for getaddrinfo
 
 using namespace std;
+using namespace Utils;
 
 namespace HDBPP
 {
@@ -109,7 +110,7 @@ const string &AttributeName::fetch_domain_family_member_name(string &item)
 //=============================================================================
 AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const string &full_attr_name)
 {
-    string::size_type first_slash = full_attr_name.find("/");
+    auto first_slash = full_attr_name.find("/");
 
     if (first_slash == string::npos)
     {
@@ -117,7 +118,7 @@ AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const
         return AttrNameErrors::NoSlashInAttribute;
     }
 
-    string::size_type second_slash = full_attr_name.find("/", first_slash + 1);
+    auto second_slash = full_attr_name.find("/", first_slash + 1);
 
     if (second_slash == string::npos)
     {
@@ -127,7 +128,7 @@ AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const
         return AttrNameErrors::OnlyOneSlashInAttribute;
     }
 
-    string::size_type third_slash = full_attr_name.find("/", second_slash + 1);
+    auto third_slash = full_attr_name.find("/", second_slash + 1);
 
     if (third_slash == string::npos)
     {
@@ -137,7 +138,7 @@ AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const
         return AttrNameErrors::OnlyTwoSlashesInAttribute;
     }
 
-    string::size_type last_slash = full_attr_name.rfind("/");
+    auto last_slash = full_attr_name.rfind("/");
 
     if (last_slash != third_slash)
     {
@@ -186,14 +187,14 @@ AttributeName::AttrNameErrors AttributeName::set_domain_family_member_name(const
 //=============================================================================
 string AttributeName::get_attr_tango_host(const string &fqdn_attr_name)
 {
-    string::size_type start = fqdn_attr_name.find("tango://");
+    auto start = fqdn_attr_name.find("tango://");
 
     if (start == string::npos)
         start = 0;
     else
         start = 8; // tango:// len
 
-    string::size_type end = fqdn_attr_name.find('/', start);
+    auto end = fqdn_attr_name.find('/', start);
     return fqdn_attr_name.substr(start, end - start);
 }
 
@@ -201,7 +202,7 @@ string AttributeName::get_attr_tango_host(const string &fqdn_attr_name)
 //=============================================================================
 string AttributeName::get_full_attribute_name(const string &fqdn_attr_name)
 {
-    string::size_type start = fqdn_attr_name.find("tango://");
+    auto start = fqdn_attr_name.find("tango://");
 
     if (start == string::npos)
         start = 0;
@@ -217,19 +218,19 @@ string AttributeName::get_full_attribute_name(const string &fqdn_attr_name)
 //=============================================================================
 string AttributeName::add_domain_to_tango_host(const string &tango_host)
 {
-    string::size_type end1 = tango_host.find(".");
+    auto end1 = tango_host.find(".");
 
     if (end1 == string::npos)
     {
         // get host name without tango://
-        string::size_type start = tango_host.find("tango://");
+        auto start = tango_host.find("tango://");
 
         if (start == string::npos)
             start = 0;
         else
             start = 8; // tango:// len
 
-        string::size_type end2 = tango_host.find(":", start);
+        auto end2 = tango_host.find(":", start);
 
         string th = tango_host.substr(start, end2);
         string with_domain = tango_host;
