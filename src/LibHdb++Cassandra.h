@@ -84,6 +84,7 @@ public:
      *      - store_diag_time: Either true to store the times or false to omit them.
      * - Debug:
      *     - logging_enabled: One of the following:
+     *          - DISABLED: No logging
      *          - ERROR: Error level logging
      *          - WARNING: Warning level logging
      *          - INFO: Info level logging

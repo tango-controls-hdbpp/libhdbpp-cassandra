@@ -19,8 +19,8 @@
 
 #include "LibHdb++Cassandra.h"
 #include "LibHdb++Defines.h"
-#include "Log.h"
 #include "PreparedStatementCache.h"
+#include "Log.h"
 #include "TangoEventDataBinder.h"
 
 #include <iostream>
@@ -1131,6 +1131,8 @@ void HdbPPCassandra::set_library_logging_level(std::string level)
         LoggerClass::Log::LogLevel() = Info;
     else if(level == "DEBUG")
         LoggerClass::Log::LogLevel() = Debug;
+    else if(level == "DISABLED")
+        LoggerClass::Log::LogLevel() = Disabled;
     else
     {
         LOG(Error) << "Invalid or no logging logging level selected, setting to default: ERROR" << endl;

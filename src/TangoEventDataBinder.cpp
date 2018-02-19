@@ -18,7 +18,6 @@
    along with libhdb++cassandra.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "TangoEventDataBinder.h"
-#include "LibHdb++Defines.h"
 
 #include <cassandra.h>
 #include <cmath>
