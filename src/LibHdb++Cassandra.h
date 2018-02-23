@@ -194,7 +194,7 @@ private:
 
     void insert_history_event(const std::string &history_event_name, CassUuid att_conf_id);
 
-    void insert_attr_conf(AttributeName &attr_name, const std::string &data_type, CassUuid &uuid, unsigned int ttl = 0);
+    void insert_attr_conf(AttributeName &attr_name, const std::string &data_type, const CassUuid &uuid, unsigned int ttl = 0);
 
     void insert_domain(AttributeName &attr_name);
     void insert_family(AttributeName &attr_name);
@@ -212,8 +212,10 @@ private:
     CassError execute_statement(CassStatement *statement);
     void throw_execute_exception(std::string message, std::string query, CassError error, const char *origin);
 
+    // Datastax cpp driver 
     CassCluster *_cass_cluster;
     CassSession *_cass_session;
+    CassUuidGen *_uuid_generator;
     CassLogLevel _cassandra_logging_level;
     CassConsistency _consistency;
 

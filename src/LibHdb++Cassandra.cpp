@@ -137,6 +137,12 @@ HdbPPCassandra::~HdbPPCassandra()
     TRACE_LOGGER;
     LOG(Debug) << "Destroying library" << endl;
 
+    if (_uuid_generator != nullptr)
+    {
+        cass_uuid_gen_free(_uuid_generator);
+        _uuid_generator = nullptr;
+    }
+
     if (_cass_cluster)
     {
         // free up any used prepared statements
@@ -180,6 +186,9 @@ void HdbPPCassandra::connect_session()
     {
         LOG(Debug) << "Cassandra connection OK" << endl;
     }
+
+    // allocate the uuid generator for the session
+    _uuid_generator = cass_uuid_gen_new();
 
     // create a prepared statement manager
     _prepared_statements = new PreparedStatementCache(_cass_session, _keyspace_name);
@@ -760,11 +769,12 @@ void HdbPPCassandra::configure_Attr(string name, int type, int format, int write
     }
     else
     {
-        // insert into configuration table
+        
         CassUuid uuid;
-        insert_attr_conf(attr_name, data_type, uuid, ttl);
+        cass_uuid_gen_time(_uuid_generator, &uuid);
 
-        // Add ADD event into history table
+        // insert into configuration table then add to the event history table
+        insert_attr_conf(attr_name, data_type, uuid, ttl);
         insert_history_event(EVENT_ADD, uuid);
     }
 
@@ -856,27 +866,16 @@ void HdbPPCassandra::event_Attr(string fqdn_attr_name, unsigned char event)
 }
 
 //=============================================================================
-/**
- * insert_attr_conf(): Insert the provided attribute into the configuration table (add it)
- *
- * @param attr_name: Attribute name class containing the fully qualified domain name
- * @param data_type: attribute data type (e.g. scalar_devdouble_rw)
- * @param uuid: uuid generated during the insertion process for this attribute
- * @param ttl: TTL value for this attribute (default = 0)
- **/
 //=============================================================================
 void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
                                       const string &data_type,
-                                      CassUuid &uuid,
+                                      const CassUuid &uuid,
                                       unsigned int ttl)
 {
     TRACE_LOGGER;
 
     CassStatement *statement = _prepared_statements->statement(Query::InsertAttributeConf);
     cass_statement_set_consistency(statement, _consistency);
-
-    CassUuidGen *uuid_gen = cass_uuid_gen_new();
-    cass_uuid_gen_time(uuid_gen, &uuid);
 
     cass_statement_bind_uuid_by_name(statement, CONF_COL_ID.c_str(), uuid);
     cass_statement_bind_string_by_name(statement, CONF_COL_FACILITY.c_str(),
@@ -887,7 +886,6 @@ void HdbPPCassandra::insert_attr_conf(AttributeName &attr_name,
     cass_statement_bind_int32_by_name(statement, CONF_COL_TTL.c_str(), ttl);
 
     CassError rc = execute_statement(statement);
-    cass_uuid_gen_free(uuid_gen);
 
     if (rc != CASS_OK)
         throw_execute_exception("ERROR executing insert query",
