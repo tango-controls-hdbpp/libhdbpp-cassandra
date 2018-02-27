@@ -212,7 +212,7 @@ enum LoggingLevel
             static std::string ToString(LoggingLevel level)
             {
                 // this vector of strings must match the const ints above
-                static std::vector<std::string> as_strings = {"Disabled", "Error", "Warning", "Debug", "Trace"};
+                static std::vector<std::string> as_strings = {"Disabled", "Error", "Warning", "Info", "Debug", "Trace"};
                 return as_strings[static_cast<int>(level)];
             }
 

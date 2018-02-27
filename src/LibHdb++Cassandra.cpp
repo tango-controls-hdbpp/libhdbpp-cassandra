@@ -367,7 +367,12 @@ bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &at
     cass_future_free(future);
     cass_statement_free(statement);
 
-    if (db_type != attr_type)
+    if (db_type.empty())
+    {
+        LOG(Warning) << "NO RESULT in query: "
+                     << _prepared_statements->query_id_to_str(Query::GetAttrDataType) << endl;
+    }
+    else if (db_type != attr_type)
     {
         stringstream error_desc;
 
@@ -377,12 +382,6 @@ bool HdbPPCassandra::attr_type_exists(AttributeName &attr_name, const string &at
 
         LOG(Error) << error_desc.str() << endl;
         Tango::Except::throw_exception(EXCEPTION_TYPE_NULL_POINTER, error_desc.str(), __func__);
-    }
-
-    if (db_type.empty())
-    {
-        LOG(Warning) << "NO RESULT in query: "
-                     << _prepared_statements->query_id_to_str(Query::GetAttrDataType) << endl;
     }
     else
     {
