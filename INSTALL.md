@@ -4,7 +4,7 @@
 - [Building and Installation](#building-and-installation)
     - [Dependencies](#dependencies)
         - [Datastax CPP Driver](#datastax-cpp-driver)
-        - [Debian Stetch Packages](#debian-stetch-packages)
+        - [Debian Stretch Packages](#debian-stretch-packages)
             - [Libhdbpp Debian Package](#libhdbpp-debian-package)
             - [Datastax CPP Driver Release 2.2.1 Debian Package](#datastax-cpp-driver-release-221-debian-package)
     - [Build flags](#build-flags)
@@ -45,7 +45,7 @@ Libhdbpp-Cassandra was developed on a debian system, so both libuv and the Datas
 cmake -DLIBUV_INCLUDE_DIR=/my/custom/include -DLIBUV_LIBRARY=/my/custom/lib ..
 ```
 
-### Debian Stetch Packages
+### Debian Stretch Packages
 
 #### Libhdbpp Debian Package
 
@@ -179,4 +179,4 @@ After the build has completed, simply run:
 make install
 ```
 
-On installation the cql scripts under etc/ will be placed in /CMAKE_INSTALL_PREFIX/shared/libhdb++cassandra/
+On installation the cql scripts under etc/ will be placed in <CMAKE_INSTALL_PREFIX>/shared/libhdb++cassandra/

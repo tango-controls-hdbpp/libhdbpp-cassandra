@@ -1,5 +1,5 @@
 -- Create hdb keyspace
--- Please adapt the replication factor (3 by default here) to your use case
+-- Please adapt the replication factor (1 by default here) to your use case
 CREATE KEYSPACE IF NOT EXISTS hdb WITH REPLICATION = { 'class' : 'NetworkTopologyStrategy', 'DC1' : 1 };
 
 USE hdb;
