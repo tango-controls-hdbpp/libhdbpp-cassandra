@@ -53,9 +53,9 @@ enum class Query
  * @brief Provide a caching mechanism for prepared statements that are used with Cassandra
  *
  * This class separates out the string building for and storing of cassandra prepared
- * objects. The class is based around to maps that act as a cache for both the
+ * objects. The class is based around two maps that act as a cache for both the
  * actual query strings and the associated prepared objects. The cache supports a simple
- * enum query type request for most queires, but for attribute inserts we need to build
+ * enum query type request for most queries, but for attribute inserts we need to build
  * a query string and prepared object based around the attribute data, format and write type.
  *
  * Currently it is not possible to bind the ttl in a USING TTL by name, therefore the class
@@ -75,6 +75,12 @@ public:
         : _session(session), _keyspace_name(keyspace_name)
     {
     }
+
+    /**
+     * @brief Destroy and clean up the various cache objects used.
+     *
+     */
+    ~PreparedStatementCache() { free_cache(); }
 
     /**
      * @brief Return a cassandra statement created from a prepared object.
@@ -102,7 +108,7 @@ public:
     CassStatement *statement(int data_type, int data_format, int data_write_type);
 
     /**
-     * @brief Return ther query string used.
+     * @brief Return the query string used.
      *
      * This will create the query string and cache it if it does not exist.
      * Then the string is returned.
@@ -112,7 +118,7 @@ public:
     const std::string &query_string(Query query) { return look_up_query_string(query); }
 
     /**
-     * @brief Return ther query string used.
+     * @brief Return the query string used.
      *
      * This will create the insert attribute query from the parameters and cache it
      * if it does not exist. Then the string is returned.
@@ -127,7 +133,7 @@ public:
      * @brief Converts the query enum into a query id string.
      *
      * Mainly helpful for debug output, so the code can elaborate on what
-     * query is being when we hit failures etc.
+     * query is being executed when we hit failures etc.
      *
      * @param query Type of query we want the string for.
      * @throw Tango::DevFailed For unsupported query types.
@@ -138,7 +144,7 @@ public:
      * @brief Converts the type, format and write type into a query id string.
      *
      * Mainly helpful for debug output, so the code can elaborate on what
-     * query is being when we hit failures etc.
+     * query is being executed when we hit failures etc.
      *
      * @param data_type The type of the tango event data.
      * @param data_format The format, SCALAR/SPECTRUM, of the tango event data.

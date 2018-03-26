@@ -59,7 +59,7 @@ public:
     unsigned int find_attr_ttl(const AttributeName &attr_name);
 
     /**
-     * @brief Lookup the attribute TTL in the cache
+     * @brief Update the attribute TTL in the cache
     */
     void update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl);
 

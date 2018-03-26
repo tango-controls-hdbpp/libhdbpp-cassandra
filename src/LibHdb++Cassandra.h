@@ -83,7 +83,7 @@ public:
      *        statements are executed with LOCAL_QUORUM consistency level.
      *      - store_diag_time: Either true to store the times or false to omit them.
      * - Debug:
-     *     - logging_enabled: One of the following:
+     *     - logging_level: One of the following:
      *          - DISABLED: No logging
      *          - ERROR: Error level logging
      *          - WARNING: Warning level logging
@@ -228,7 +228,7 @@ private:
     // manage prepared statement objects
     PreparedStatementCache *_prepared_statements;
 
-    // cache some details aout attributes, to save db lookup
+    // cache some details about attributes, to save db lookup
     AttributeCache _attr_cache;
 };
 

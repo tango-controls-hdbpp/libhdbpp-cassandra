@@ -63,7 +63,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     auto libhdb_conf = extract_config(configuration, "=");
 
     // ---- logging_enabled optional config parameter ----
-    config = get_config_param(libhdb_conf, "logging_enabled", false);
+    config = get_config_param(libhdb_conf, "logging_level", false);
     set_library_logging_level(config);
 
     // ---- cassandra_driver_log_level optional config parameter ----
@@ -145,8 +145,7 @@ HdbPPCassandra::~HdbPPCassandra()
 
     if (_cass_cluster)
     {
-        // free up any used prepared statements
-        _prepared_statements->free_cache();
+        // clean up the prepared statement cache
         delete _prepared_statements;
 
         CassFuture *close_future = NULL;
@@ -1132,7 +1131,7 @@ void HdbPPCassandra::set_library_logging_level(std::string level)
         LoggerClass::Log::LogLevel() = Disabled;
     else
     {
-        LOG(Error) << "Invalid or no logging logging level selected, setting to default: ERROR" << endl;
+        LOG(Error) << "Invalid or no logging level selected, setting to default: ERROR" << endl;
         LoggerClass::Log::LogLevel() = Error;
     }
 

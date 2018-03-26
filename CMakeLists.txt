@@ -53,7 +53,6 @@ option(HDBPP_CASS_ENABLE_TRACING "Enable tracing on all function calls" OFF)
 
 if(HDBPP_CASS_ENABLE_TRACING)
     message(STATUS "Enabled function tracing for libhdbpp-cassandra")
-    set(HDBPP_CASS_ENABLE_DEBUG ON)
 endif(HDBPP_CASS_ENABLE_TRACING)
 
 if(HDBPP_CASS_DEV_INSTALL)

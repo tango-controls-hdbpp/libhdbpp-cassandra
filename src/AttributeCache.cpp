@@ -110,7 +110,7 @@ void AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned in
     _last_lookup_params = &((*result).second);
     _last_lookup_name = attr_name.fully_qualified_attribute_name();        
 
-    LOG(Debug) << "Updated addtribute: " << attr_name << " ttl from: " << (*result).second._ttl 
+    LOG(Debug) << "Updated attribute: " << attr_name << " ttl from: " << (*result).second._ttl 
                << " to: " << new_ttl << endl;    
 
     // update the ttl
@@ -143,7 +143,7 @@ void AttributeCache::cache_attribute(const AttributeName &attr_name, const CassU
     char uuid_str[CASS_UUID_STRING_LENGTH];
     cass_uuid_string(uuid, uuid_str);
 
-    LOG(Debug) << "Cached addtribute: " << attr_name << " to cache with uuid: " << uuid_str 
+    LOG(Debug) << "Cached attribute: " << attr_name << " to cache with uuid: " << uuid_str 
                << " and ttl: " << ttl << endl;    
 }
 

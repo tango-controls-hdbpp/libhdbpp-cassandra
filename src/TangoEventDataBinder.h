@@ -115,7 +115,8 @@ private:
     template <typename T>
     void statement_bind(CassStatement *statement, const std::string &bind_name, T val);
 
-    template <typename T> void collection_append(CassCollection *read_values_list, T val);
+    template <typename T> 
+    void collection_append(CassCollection *read_values_list, T val);
 };
 
 //=============================================================================
