@@ -117,43 +117,43 @@ string PreparedStatementCache::get_data_type(int data_type, int data_format, int
     switch (data_type)
     {
         case Tango::DEV_BOOLEAN:
-            built_data_type.append(TYPE_DEV_BOOLEAN).append("_");
+            built_data_type.append("_").append(TYPE_DEV_BOOLEAN).append("_");
             break;
         case Tango::DEV_UCHAR:
-            built_data_type.append(TYPE_DEV_UCHAR).append("_");
+            built_data_type.append("_").append(TYPE_DEV_UCHAR).append("_");
             break;
         case Tango::DEV_SHORT:
-            built_data_type.append(TYPE_DEV_SHORT).append("_");
+            built_data_type.append("_").append(TYPE_DEV_SHORT).append("_");
             break;
         case Tango::DEV_USHORT:
-            built_data_type.append(TYPE_DEV_USHORT).append("_");
+            built_data_type.append("_").append(TYPE_DEV_USHORT).append("_");
             break;
         case Tango::DEV_LONG:
-            built_data_type.append(TYPE_DEV_LONG).append("_");
+            built_data_type.append("_").append(TYPE_DEV_LONG).append("_");
             break;
         case Tango::DEV_ULONG:
-            built_data_type.append(TYPE_DEV_ULONG).append("_");
+            built_data_type.append("_").append(TYPE_DEV_ULONG).append("_");
             break;
         case Tango::DEV_LONG64:
-            built_data_type.append(TYPE_DEV_LONG64).append("_");
+            built_data_type.append("_").append(TYPE_DEV_LONG64).append("_");
             break;
         case Tango::DEV_ULONG64:
-            built_data_type.append(TYPE_DEV_ULONG64).append("_");
+            built_data_type.append("_").append(TYPE_DEV_ULONG64).append("_");
             break;
         case Tango::DEV_FLOAT:
-            built_data_type.append(TYPE_DEV_FLOAT).append("_");
+            built_data_type.append("_").append(TYPE_DEV_FLOAT).append("_");
             break;
         case Tango::DEV_DOUBLE:
-            built_data_type.append(TYPE_DEV_DOUBLE).append("_");
+            built_data_type.append("_").append(TYPE_DEV_DOUBLE).append("_");
             break;
         case Tango::DEV_STRING:
-            built_data_type.append(TYPE_DEV_STRING).append("_");
+            built_data_type.append("_").append(TYPE_DEV_STRING).append("_");
             break;
         case Tango::DEV_STATE:
-            built_data_type.append(TYPE_DEV_STATE).append("_");
+            built_data_type.append("_").append(TYPE_DEV_STATE).append("_");
             break;
         case Tango::DEV_ENCODED:
-            built_data_type.append(TYPE_DEV_ENCODED).append("_");
+            built_data_type.append("_").append(TYPE_DEV_ENCODED).append("_");
             break;
         default:
             stringstream error_desc;
