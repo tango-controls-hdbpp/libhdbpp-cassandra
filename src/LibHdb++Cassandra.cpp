@@ -741,7 +741,7 @@ void HdbPPCassandra::configure_Attr(string name, int type, int format, int write
         Tango::Except::throw_exception(EXCEPTION_TYPE_ATTR_FORMAT, error_desc.str().c_str(), __func__);
     }
 
-    string data_type = _prepared_statements->get_table_name(type, format, write_type);
+    string data_type = _prepared_statements->get_data_type(type, format, write_type);
     
     if(attr_type_exists(attr_name, data_type))
     {

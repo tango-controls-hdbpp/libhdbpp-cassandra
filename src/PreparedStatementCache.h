@@ -173,10 +173,10 @@ public:
     int get_insert_attr_ttl_bind_position(int data_write_type) const;
 
     /**
-     * @brief Return a unique table name based on the parameters.
+     * @brief Return a data type based on the parameters
      *
-     * The table name starts with "att_", then the function uses the format (scalar/spectrum),
-     * followed by the type (string based on type) and finally appends a string based on the
+     * The function uses the format (scalar/spectrum), followed by the type 
+     * (string based on type) and finally appends a string based on the
      * read/write (r/w/rw). This name is then unique for this combination.
      *
      * @param data_type The type of the tango event data.
@@ -184,7 +184,7 @@ public:
      * @param write_type The read/write type of the tango event data.
      * @throw Tango::DevFailed For unsupported types.
      */
-    std::string get_table_name(int data_type, int data_format, int data_write_type) const;
+    std::string get_data_type(int data_type, int data_format, int data_write_type) const;
 
     /**
      * @brief Return the query string cache size. Helpful debug.
@@ -202,17 +202,25 @@ public:
     friend std::ostream &operator<<(std::ostream &os, const PreparedStatementCache &cache);
 
 private:
+
     // query string look up functions. Both will create and cache missing queries
     const std::string &look_up_query_string(Query query);
     const std::string &look_up_query_string(int data_type, int data_format, int data_write_type);
 
+    // build an ad hoc query id for the given parameters, so we can cache a query string against it
+    // and look it up later
     std::string create_query_id_from_data(int data_type, int data_format, int data_write_type) const;
 
+    // create a prepared statement and cache for reuse
     CassStatement *create_and_cache_prepared_object(const std::string &query_id,
                                                     const std::string &query_str);
 
     // insert the query_string into the query cache, indexed by query id
     void cache_query_string(const std::string &query_id, const std::string &query_string);
+
+    // turn the type/format/rw into a usable table name, which is used to insert into
+    // att table
+    std::string get_table_name(int data_type, int data_format, int data_write_type) const;
 
     // use unordered maps, since the key is hashed and we only care about look
     // times. Further, we do no insert/deletes on the cache. This should give

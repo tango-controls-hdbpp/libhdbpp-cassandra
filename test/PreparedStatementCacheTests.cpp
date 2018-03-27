@@ -469,7 +469,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
 
         WHEN("InsertAttribute prepared statement is requested with Tango::SCALAR format")
         {
-            string str = cache.get_table_name(Tango::DEV_DOUBLE, Tango::SCALAR, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_DOUBLE, Tango::SCALAR, Tango::READ);
 
             THEN("Returned string contains " + TYPE_SCALAR)
             {
@@ -478,7 +478,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::SPECTRUM format")
         {
-            string str = cache.get_table_name(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_ARRAY)
             {
@@ -487,7 +487,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }     
         WHEN("InsertAttribute prepared statement is requested with Tango::READ write type")
         {
-            string str = cache.get_table_name(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_RO)
             {
@@ -496,7 +496,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::READ_WRITE write type")
         {
-            string str = cache.get_table_name(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ_WRITE);
+            string str = cache.get_data_type(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ_WRITE);
 
             THEN("Returned string contains " + TYPE_RW)
             {
@@ -505,7 +505,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_BOOLEAN type")
         {
-            string str = cache.get_table_name(Tango::DEV_BOOLEAN, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_BOOLEAN, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_BOOLEAN)
             {
@@ -514,7 +514,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_UCHAR type")
         {
-            string str = cache.get_table_name(Tango::DEV_UCHAR, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_UCHAR, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_UCHAR)
             {
@@ -523,7 +523,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }          
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_SHORT type")
         {
-            string str = cache.get_table_name(Tango::DEV_SHORT, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_SHORT, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_SHORT)
             {
@@ -532,7 +532,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_USHORT type")
         {
-            string str = cache.get_table_name(Tango::DEV_USHORT, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_USHORT, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_USHORT)
             {
@@ -541,7 +541,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_LONG type")
         {
-            string str = cache.get_table_name(Tango::DEV_LONG, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_LONG, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_LONG)
             {
@@ -550,7 +550,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_ULONG type")
         {
-            string str = cache.get_table_name(Tango::DEV_ULONG, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_ULONG, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_ULONG)
             {
@@ -559,7 +559,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }          
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_LONG64 type")
         {
-            string str = cache.get_table_name(Tango::DEV_LONG64, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_LONG64, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_LONG64)
             {
@@ -568,7 +568,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_ULONG64 type")
         {
-            string str = cache.get_table_name(Tango::DEV_ULONG64, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_ULONG64, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_ULONG64)
             {
@@ -577,7 +577,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }  
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_FLOAT type")
         {
-            string str = cache.get_table_name(Tango::DEV_FLOAT, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_FLOAT, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_FLOAT)
             {
@@ -586,7 +586,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_DOUBLE type")
         {
-            string str = cache.get_table_name(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_DOUBLE, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_DOUBLE)
             {
@@ -595,7 +595,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }          
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_STRING type")
         {
-            string str = cache.get_table_name(Tango::DEV_STRING, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_STRING, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_STRING)
             {
@@ -604,7 +604,7 @@ SCENARIO("Insert Attribute table name is constructed with correct strings when c
         }
         WHEN("InsertAttribute prepared statement is requested with Tango::DEV_STATE type")
         {
-            string str = cache.get_table_name(Tango::DEV_STATE, Tango::SPECTRUM, Tango::READ);
+            string str = cache.get_data_type(Tango::DEV_STATE, Tango::SPECTRUM, Tango::READ);
 
             THEN("Returned string contains " + TYPE_DEV_STATE)
             {

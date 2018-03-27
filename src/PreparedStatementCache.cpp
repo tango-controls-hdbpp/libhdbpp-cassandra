@@ -106,55 +106,54 @@ const string &PreparedStatementCache::query_string(int data_type, int data_forma
 
 //=============================================================================
 //=============================================================================
-string PreparedStatementCache::get_table_name(int data_type, int data_format, int data_write_type) const
+string PreparedStatementCache::get_data_type(int data_type, int data_format, int data_write_type) const
 {
     TRACE_LOGGER;
-    string table_name = "att_";
 
     // first add the type
-    table_name.append(data_format == Tango::SCALAR ? TYPE_SCALAR : TYPE_ARRAY).append("_");
+    string built_data_type = (data_format == Tango::SCALAR ? TYPE_SCALAR : TYPE_ARRAY);
 
     // add the data type
     switch (data_type)
     {
         case Tango::DEV_BOOLEAN:
-            table_name.append(TYPE_DEV_BOOLEAN).append("_");
+            built_data_type.append(TYPE_DEV_BOOLEAN).append("_");
             break;
         case Tango::DEV_UCHAR:
-            table_name.append(TYPE_DEV_UCHAR).append("_");
+            built_data_type.append(TYPE_DEV_UCHAR).append("_");
             break;
         case Tango::DEV_SHORT:
-            table_name.append(TYPE_DEV_SHORT).append("_");
+            built_data_type.append(TYPE_DEV_SHORT).append("_");
             break;
         case Tango::DEV_USHORT:
-            table_name.append(TYPE_DEV_USHORT).append("_");
+            built_data_type.append(TYPE_DEV_USHORT).append("_");
             break;
         case Tango::DEV_LONG:
-            table_name.append(TYPE_DEV_LONG).append("_");
+            built_data_type.append(TYPE_DEV_LONG).append("_");
             break;
         case Tango::DEV_ULONG:
-            table_name.append(TYPE_DEV_ULONG).append("_");
+            built_data_type.append(TYPE_DEV_ULONG).append("_");
             break;
         case Tango::DEV_LONG64:
-            table_name.append(TYPE_DEV_LONG64).append("_");
+            built_data_type.append(TYPE_DEV_LONG64).append("_");
             break;
         case Tango::DEV_ULONG64:
-            table_name.append(TYPE_DEV_ULONG64).append("_");
+            built_data_type.append(TYPE_DEV_ULONG64).append("_");
             break;
         case Tango::DEV_FLOAT:
-            table_name.append(TYPE_DEV_FLOAT).append("_");
+            built_data_type.append(TYPE_DEV_FLOAT).append("_");
             break;
         case Tango::DEV_DOUBLE:
-            table_name.append(TYPE_DEV_DOUBLE).append("_");
+            built_data_type.append(TYPE_DEV_DOUBLE).append("_");
             break;
         case Tango::DEV_STRING:
-            table_name.append(TYPE_DEV_STRING).append("_");
+            built_data_type.append(TYPE_DEV_STRING).append("_");
             break;
         case Tango::DEV_STATE:
-            table_name.append(TYPE_DEV_STATE).append("_");
+            built_data_type.append(TYPE_DEV_STATE).append("_");
             break;
         case Tango::DEV_ENCODED:
-            table_name.append(TYPE_DEV_ENCODED).append("_");
+            built_data_type.append(TYPE_DEV_ENCODED).append("_");
             break;
         default:
             stringstream error_desc;
@@ -164,9 +163,9 @@ string PreparedStatementCache::get_table_name(int data_type, int data_format, in
     }
 
     // finally the write type
-    table_name.append(data_write_type == Tango::READ ? TYPE_RO : TYPE_RW);
+    built_data_type.append(data_write_type == Tango::READ ? TYPE_RO : TYPE_RW);
 
-    return table_name;
+    return built_data_type;
 }
 
 //=============================================================================
@@ -548,6 +547,15 @@ void PreparedStatementCache::cache_query_string(const string &query_id, const st
     LOG(Debug) << "Cached the query string: " << query_string << endl;
     LOG(Debug) << "Query cache is now: " << _query_cache.size() << endl;
 }
+
+//=============================================================================
+//=============================================================================
+string PreparedStatementCache::get_table_name(int data_type, int data_format, int data_write_type) const
+{
+    TRACE_LOGGER;
+    return "att_" + get_data_type(data_type, data_format, data_write_type);
+}
+
 
 //=============================================================================
 //=============================================================================
