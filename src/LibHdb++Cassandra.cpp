@@ -563,8 +563,7 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     cass_statement_bind_string_by_name(statement, SC_COL_ERROR_DESC.c_str(), error_desc.c_str());
 
     TangoEventDataBinder event_binder;
-    event_binder(statement, SC_COL_VALUE_R, data_type, write_type, data_format, data);
-    event_binder(statement, SC_COL_VALUE_W, data_type, write_type, data_format, data);
+    event_binder(statement, data_type, write_type, data_format, data);
 
     if (ttl > 0)
     {

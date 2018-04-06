@@ -31,7 +31,6 @@ namespace HDBPP
 //=============================================================================
 //=============================================================================
 void TangoEventDataBinder::operator()(CassStatement *statement,
-                                      const string &bind_name,
                                       int data_type,
                                       int write_type,
                                       int data_format,
@@ -44,45 +43,45 @@ void TangoEventDataBinder::operator()(CassStatement *statement,
     switch (data_type)
     {
         case Tango::DEV_BOOLEAN:
-            extract_and_bind_value<bool>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<bool>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_UCHAR:
-            extract_and_bind_value<unsigned char>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<unsigned char>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_SHORT:
-            extract_and_bind_value<short>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<short>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_USHORT:
-            extract_and_bind_value<unsigned short>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<unsigned short>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_LONG:
-            extract_and_bind_value<int>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<int>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_ULONG:
-            extract_and_bind_value<unsigned int>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<unsigned int>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_LONG64:
-            extract_and_bind_value<int64_t>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<int64_t>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_ULONG64:
-            extract_and_bind_value<uint64_t>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<uint64_t>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_FLOAT:
-            extract_and_bind_value<float>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<float>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_DOUBLE:
-            extract_and_bind_value<double>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<double>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_STRING:
-            extract_and_bind_value<string>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<string>(statement, write_type, data_format, data);
             break;
         case Tango::DEV_STATE:
-            extract_and_bind_value<Tango::DevState>(statement, bind_name, write_type, data_format, data);
+            extract_and_bind_value<Tango::DevState>(statement, write_type, data_format, data);
             break;
 
         /// @todo Add support for DEV_ENCODED
         case Tango::DEV_ENCODED:
-        // extract_and_bind_value<Tango::DevEncoded>(statement, bind_name, write_type, data_format,
+        // extract_and_bind_value<Tango::DevEncoded>(statement, write_type, data_format,
         // data);
         // break;
 

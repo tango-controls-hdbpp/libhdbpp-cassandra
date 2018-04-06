@@ -73,7 +73,6 @@ public:
      * @throw Tango::DevFailed For unsupported datatypes and data type mismatches
      */
     void operator()(CassStatement *statement,
-                    const std::string &bind_name,
                     int data_type,
                     int write_type,
                     int data_format,
@@ -91,7 +90,6 @@ private:
     // on the write_type parameter
     template <typename T>
     void extract_and_bind_value(CassStatement *statement,
-                                const std::string &bind_name,
                                 int write_type,
                                 int data_format,
                                 Tango::EventData *data);
@@ -123,17 +121,16 @@ private:
 //=============================================================================
 template <typename T>
 void TangoEventDataBinder::extract_and_bind_value(CassStatement *statement,
-                                                  const std::string &bind_name,
                                                   int write_type,
                                                   int data_format,
                                                   Tango::EventData *data)
 {
     if (write_type != Tango::WRITE)
-        do_extract_and_bind_value<T>(statement, bind_name.c_str(), data_format, data,
+        do_extract_and_bind_value<T>(statement, SC_COL_VALUE_R, data_format, data,
                                      ExtractType::ExtractRead);
 
     if (write_type != Tango::READ)
-        do_extract_and_bind_value<T>(statement, bind_name.c_str(), data_format, data,
+        do_extract_and_bind_value<T>(statement, SC_COL_VALUE_W, data_format, data,
                                      ExtractType::ExtractSet);
 }
 
