@@ -138,9 +138,6 @@ const std::string ARR_COL_EV_TIME = "event_time";
 const std::string ARR_COL_EV_TIME_US = "event_time_us";
 const std::string ARR_COL_VALUE_R = "value_r";
 const std::string ARR_COL_VALUE_W = "value_w";
-const std::string ARR_COL_IDX = "idx";
-const std::string ARR_COL_DIMX = "dim_x";
-const std::string ARR_COL_DIMY = "dim_y";
 const std::string ARR_COL_QUALITY = "quality";
 
 //######## att_parameter ########

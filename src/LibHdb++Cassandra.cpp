@@ -487,8 +487,6 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     int quality = (int)data->attr_value->get_quality();
     string error_desc("");
 
-    Tango::AttributeDimension attr_w_dim;
-    Tango::AttributeDimension attr_r_dim;
     int data_type = ev_data_type.data_type;
     Tango::AttrDataFormat data_format = ev_data_type.data_format;
     int write_type = ev_data_type.write_type;
@@ -523,18 +521,11 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
 
     if (!is_null)
     {
-        attr_w_dim = data->attr_value->get_w_dimension();
-        attr_r_dim = data->attr_value->get_r_dimension();
         ev_time = ((int64_t)data->attr_value->get_date().tv_sec) * 1000;
         ev_time_us = data->attr_value->get_date().tv_usec;
     }
     else
     {
-        /// @todo Check this is ok?
-        attr_r_dim.dim_x = 0;
-        attr_w_dim.dim_x = 0;
-        attr_r_dim.dim_y = 0;
-        attr_w_dim.dim_y = 0;
         ev_time = rcv_time;
         ev_time_us = rcv_time_us;
     }
