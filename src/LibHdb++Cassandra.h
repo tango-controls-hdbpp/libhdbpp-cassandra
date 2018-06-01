@@ -185,8 +185,10 @@ private:
     void connect_session();
 
     bool load_and_cache_attr(AttributeName &attr_name);
+
     unsigned int get_attr_ttl(AttributeName &attr_name);
     CassUuid get_attr_uuid(AttributeName &attr_name);
+    std::pair<CassUuid, unsigned int> get_both_attr_id_and_ttl(AttributeName &attr_name);
 
     bool attr_type_exists(AttributeName &attr_name, const std::string &attr_type);
 

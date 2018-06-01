@@ -62,7 +62,7 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     // convert the config vector to a map
     auto libhdb_conf = extract_config(configuration, "=");
 
-    // ---- logging_enabled optional config parameter ----
+    // ---- logging_level optional config parameter ----
     config = get_config_param(libhdb_conf, "logging_level", false);
     set_library_logging_level(config);
 
@@ -322,6 +322,26 @@ CassUuid HdbPPCassandra::get_attr_uuid(AttributeName &attr_name)
     }
 
     return _attr_cache.find_attr_uuid(attr_name);
+}
+
+//=============================================================================
+//=============================================================================
+std::pair<CassUuid, unsigned int> HdbPPCassandra::get_both_attr_id_and_ttl(AttributeName &attr_name)
+{
+    TRACE_LOGGER;
+
+    if( !_attr_cache.cached(attr_name))
+    {
+        if (!load_and_cache_attr(attr_name))
+        {
+            stringstream error_desc;
+            error_desc << "ERROR: Could not find uuid/ttl in HDB++ configuration for attribute: " << attr_name << ends;
+            LOG(Error) << error_desc.str() << endl;
+            Tango::Except::throw_exception(EXCEPTION_TYPE_MISSING_ATTR, error_desc.str().c_str(), __func__);
+        }
+    }
+
+    return _attr_cache.find_attr_id_and_ttl(attr_name);
 }
 
 //=============================================================================
@@ -747,21 +767,20 @@ void HdbPPCassandra::configure_Attr(string name, int type, int format, int write
         LOG(Debug) << "ALREADY CONFIGURED with same configuration: "
                    << attr_name.tango_host_with_domain() << "/" << attr_name << endl;
 
-        CassUuid uuid = get_attr_uuid(attr_name);
-        unsigned int conf_ttl = get_attr_ttl(attr_name);
+        pair<CassUuid, unsigned int> attr_cached_info = get_both_attr_id_and_ttl(attr_name);
 
-        if (conf_ttl != ttl)
+        if (attr_cached_info.second != ttl)
         {
-            LOG(Debug) << ".... BUT different ttl: updating " << conf_ttl << " to " << ttl << endl;
-            update_ttl(attr_name, ttl);
+            LOG(Debug) << ".... BUT different ttl: updating " << attr_cached_info.second << " to " << ttl << endl;
+            update_ttl(attr_name, attr_cached_info.second);
         }
         // If the last event was EVENT_REMOVE, add it again
         string last_event;
 
-        if (find_last_event(uuid, last_event, attr_name) && last_event == EVENT_REMOVE)
+        if (find_last_event(attr_cached_info.first, last_event, attr_name) && last_event == EVENT_REMOVE)
         {
             // An attribute which was removed needs to be added again
-            insert_history_event(EVENT_ADD, uuid);
+            insert_history_event(EVENT_ADD, attr_cached_info.first);
         }
     }
     else

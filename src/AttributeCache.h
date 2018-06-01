@@ -59,6 +59,12 @@ public:
     unsigned int find_attr_ttl(const AttributeName &attr_name);
 
     /**
+     * @brief Lookup the attribute id and TTL in the cache
+     * @return A pair containing the id and ttl. Throws an exception if nothing is found.
+    */
+    std::pair<CassUuid, unsigned int> find_attr_id_and_ttl(const AttributeName &attr_name);
+
+    /**
      * @brief Update the attribute TTL in the cache
     */
     void update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl);
@@ -101,7 +107,7 @@ private:
     std::unordered_map<std::string, AttributeParams> _attribute_cache;
 
     // This is a cache into the cache, the last looked up attribute
-    // is cached, this is to save a second search if we retrieve, so example,
+    // is cached, this is to save a second search if we retrieve, for example,
     // multiple pieces of data about a single attribute
     AttributeParams *_last_lookup_params;
     std::string _last_lookup_name;

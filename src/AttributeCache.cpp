@@ -87,6 +87,35 @@ unsigned int AttributeCache::find_attr_ttl(const AttributeName &attr_name)
 
 //=============================================================================
 //=============================================================================
+pair<CassUuid, unsigned int> AttributeCache::find_attr_id_and_ttl(const AttributeName &attr_name)
+{
+    TRACE_LOGGER;
+    LOG(Debug) << "Requesting id and ttl for attr: " << attr_name.fully_qualified_attribute_name() << endl;
+
+    // First look into the cached attribute
+    if(_last_lookup_params != nullptr && attr_name.fully_qualified_attribute_name() == _last_lookup_name)
+        return pair<CassUuid, unsigned int>(_last_lookup_params->_uuid, _last_lookup_params->_ttl);
+
+    auto result = _attribute_cache.find(attr_name.fully_qualified_attribute_name());
+
+    if (result == _attribute_cache.end())
+    {
+        stringstream error_desc;
+        error_desc << "Error: no cached ttl for attribute: " << attr_name.fully_qualified_attribute_name() << ends;
+        LOG(Error) << error_desc.str() << endl;
+        Tango::Except::throw_exception(EXCEPTION_ATTR_CACHE, error_desc.str().c_str(), __func__);
+    }
+
+    // cache this lookup
+    _last_lookup_params = &((*result).second);
+    _last_lookup_name = attr_name.fully_qualified_attribute_name();        
+
+    // return the ttl
+    return pair<CassUuid, unsigned int>((*result).second._uuid, (*result).second._ttl);
+}
+
+//=============================================================================
+//=============================================================================
 void AttributeCache::update_attr_ttl(const AttributeName &attr_name, unsigned int new_ttl)
 {
     TRACE_LOGGER;
