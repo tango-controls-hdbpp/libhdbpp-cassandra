@@ -3,12 +3,12 @@ Upstream-Name: libhdbpp-cassandra
 Source: https://github.com/tango-controls-hdbpp/libhdbpp-cassandra
 
 Files: *
-Copyright: 2014-2017 European Synchrotron Radiation Facility, 
+Copyright: 2014-2018 European Synchrotron Radiation Facility, 
                      BP 220, Grenoble 38043, FRANCE
 License: LGPL-3.0+
 
 Files: debian/*
-Copyright: 2014-2017 European Synchrotron Radiation Facility, 
+Copyright: 2014-2018 European Synchrotron Radiation Facility, 
                      BP 220, Grenoble 38043, FRANCE
 License: LGPL-3.0+
 
