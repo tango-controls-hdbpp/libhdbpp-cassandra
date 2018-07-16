@@ -22,13 +22,13 @@
 
 #include <string>
 
-/** 
+/**
  * @namespace HDBPP
- * @brief HDBPP contains all the various classes required for the libhdbpp-cassandra 
+ * @brief HDBPP contains all the various classes required for the libhdbpp-cassandra
  * shared library
  *
- * The namespace currently contains both the exposed HdbPPCassandra class and a number 
- * of helper classes that break out functionality from HdbPPCassandra. In future it 
+ * The namespace currently contains both the exposed HdbPPCassandra class and a number
+ * of helper classes that break out functionality from HdbPPCassandra. In future it
  * may be the case we hide some of these helper classes inside a inner namespace,
  * to unclutter the HDBPP namespace.
  */
@@ -138,9 +138,6 @@ const std::string ARR_COL_EV_TIME = "event_time";
 const std::string ARR_COL_EV_TIME_US = "event_time_us";
 const std::string ARR_COL_VALUE_R = "value_r";
 const std::string ARR_COL_VALUE_W = "value_w";
-const std::string ARR_COL_IDX = "idx";
-const std::string ARR_COL_DIMX = "dim_x";
-const std::string ARR_COL_DIMY = "dim_y";
 const std::string ARR_COL_QUALITY = "quality";
 
 //######## att_parameter ########
@@ -171,5 +168,9 @@ const std::string EXCEPTION_TYPE_NULL_POINTER = "Null Pointer Error";
 const std::string EXCEPTION_TYPE_ATTR_FORMAT = "Attribute Format Error";
 const std::string EXCEPTION_TYPE_ATTR_CACHE = "Attribute Cache Error";
 const std::string EXCEPTION_TYPE_ATTR_NAME = "Attribute Name Error";
+const std::string EXCEPTION_PREPARED_STATEMENT_ERROR = "Failed To Prepare Statement";
+const std::string EXCEPTION_UNKNOWN_QUERY = "Unknown Query Error";
+const std::string EXCEPTION_TYPE_TYPE_MISMATCH = "Type Mismatch";
+const std::string EXCEPTION_ATTR_CACHE = "Attribute cache failure";
 } // HDBPP
 #endif

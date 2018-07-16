@@ -60,7 +60,6 @@ public:
     /**
      * @brief Construct an AttributeName object
      *
-     * @todo Check the fqdn_attr_name is correctly formed
      * @param fqdn_attr_name Fully qualified attribute name
      * @throw Tango::DevFailed
     */
@@ -134,7 +133,7 @@ private:
 
     // takes the fqdn and breaks out the various component parts, such
     // as domain, family etc
-    AttrNameErrors set_domain_family_member_name(const std::string &full_attr_name );
+    AttrNameErrors set_domain_family_member_name(const std::string &full_attr_name);
 
     // generic function used to fetch attribute name sub parts, such as
     // family, name etc

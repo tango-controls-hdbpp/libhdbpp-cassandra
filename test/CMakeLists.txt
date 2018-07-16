@@ -51,9 +51,16 @@ target_include_directories(catch_library INTERFACE ${CATCH_INCLUDE_DIR})
 
 # Make test executable
 set(TEST_SOURCES 
-    ${CMAKE_CURRENT_SOURCE_DIR}/LibHdb++Cassandra-Tests.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/AttributeNameTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/AttributeCacheTests.cpp    
+    ${CMAKE_CURRENT_SOURCE_DIR}/CassandraConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/CassandraConnectionTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/DbCommands.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/PreparedStatementCacheTests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/TangoEventDataBinderTests.cpp)
 
 add_executable(unit-tests ${TEST_SOURCES})
+target_compile_options(unit-tests PRIVATE -std=c++11 -Wall -Wextra ${TANGO_CFLAGS_OTHER})
 target_link_libraries(unit-tests PRIVATE catch_library static_library ${UNIT_TEST_FOUND_LIBS})
 target_include_directories(unit-tests PRIVATE ${UNIT_TEST_INCLUDE_PATHS})
-target_compile_options(unit-tests PRIVATE ${TANGO_CFLAGS_OTHER})

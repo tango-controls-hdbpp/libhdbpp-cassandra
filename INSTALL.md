@@ -4,7 +4,7 @@
 - [Building and Installation](#building-and-installation)
     - [Dependencies](#dependencies)
         - [Datastax CPP Driver](#datastax-cpp-driver)
-        - [Debian Stetch Packages](#debian-stetch-packages)
+        - [Debian Stretch Packages](#debian-stretch-packages)
             - [Libhdbpp Debian Package](#libhdbpp-debian-package)
             - [Datastax CPP Driver Release 2.2.1 Debian Package](#datastax-cpp-driver-release-221-debian-package)
     - [Build flags](#build-flags)
@@ -45,7 +45,7 @@ Libhdbpp-Cassandra was developed on a debian system, so both libuv and the Datas
 cmake -DLIBUV_INCLUDE_DIR=/my/custom/include -DLIBUV_LIBRARY=/my/custom/lib ..
 ```
 
-### Debian Stetch Packages
+### Debian Stretch Packages
 
 #### Libhdbpp Debian Package
 
@@ -65,8 +65,8 @@ The build system is CMake therefore standard CMake flags can be used to influenc
 | HDBPP_CASS_BUILD_STATIC | OFF | Build the static library. This will also be installed if make install is run. |
 | HDBPP_CASS_BUILD_TESTS | OFF | Build unit tests |
 | HDBPP_CASS_DEV_INSTALL | OFF | Install development files and libraries |
-| HDBPP_CASS_INSTALL_SCRIPTS | OFF | Install cql script to /usr/share/libdhb++cassandra |
-| HDBPP_CASS_ADDITIONAL_LIBS | | Cludge to allow additional libraries to be linked against the shared library |
+| HDBPP_CASS_INSTALL_SCRIPTS | OFF | Install cql scripts |
+| HDBPP_CASS_ENABLE_TRACING | OFF | Enabled function tracing debug |
 
 The following is a list of common useful CMake flags and their use:
 
@@ -179,4 +179,4 @@ After the build has completed, simply run:
 make install
 ```
 
-On installation the cql scripts under etc/ will be placed in /usr/shared/libhdb++cassandra/
+On installation the cql scripts under etc/ will be placed in <CMAKE_INSTALL_PREFIX>/shared/libhdb++cassandra/

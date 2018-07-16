@@ -21,6 +21,7 @@
 #define _HDBPP_CASSANDRA_H
 
 #include "AttributeName.h"
+#include "AttributeCache.h"
 #include <libhdb++/LibHdb++.h>
 
 #include <tango.h>
@@ -31,6 +32,9 @@
 
 namespace HDBPP
 {
+// forward declare
+class PreparedStatementCache;
+
 /**
  * @class HdbPPCassandra
  * @ingroup HDBPP-Interface
@@ -44,46 +48,7 @@ namespace HDBPP
  */
 class HdbPPCassandra : public AbstractDB
 {
-private:
-    enum FindAttrResult
-    {
-        AttrNotFound,
-        FoundAttrWithDifferentType,
-        FoundAttrWithSameType
-    };
-
-    enum extract_t
-    {
-        EXTRACT_READ,
-        EXTRACT_SET
-    };
-
-    // Parameters for an attribute that can be cached. Mapped to the attribute name
-    // in a map below.
-    struct AttributeParams
-    {
-        AttributeParams(CassUuid param_id, unsigned int param_ttl) : id(param_id), ttl(param_ttl) {}
-        CassUuid id;
-        unsigned int ttl;
-    };
-
-    // cache the attribute name to some of its often used data, i.e. ttl and id. This
-    // saves it being looked up in the database everytime we request it
-    map<string, AttributeParams> attribute_cache;
-
-    CassCluster *mp_cluster;
-    CassSession *mp_session;
-    string m_keyspace_name;
-    CassLogLevel cassandra_logging_level;
-    CassConsistency consistency;
-
 public:
-    /**
-     * @brief HdbPPCassandra destructor
-     *
-     * The destructor will attempt to disconnect an open Cassandra session
-     */
-    ~HdbPPCassandra();
 
     /**
      * @brief HdbPPCassandra constructor
@@ -116,8 +81,14 @@ public:
      *      - local_dc: Datacenter name used for queries with LOCAL consistency
      *        level (e.g. LOCAL_QUORUM). In the current version of this library, all the
      *        statements are executed with LOCAL_QUORUM consistency level.
+     *      - store_diag_time: Either true to store the times or false to omit them.
      * - Debug:
-     *     - logging_enabled: Either true to enable command line debug, or false to disable
+     *     - logging_level: One of the following:
+     *          - DISABLED: No logging
+     *          - ERROR: Error level logging
+     *          - WARNING: Warning level logging
+     *          - INFO: Info level logging
+     *          - DEBUG: Debug level logging (maximum logging)
      *     - cassandra_driver_log_level:  Cassandra logging level, see CassLogLevel in Datastax
      *       documentation. This must be one of the following values:
      *          - TRACE: Equivalent CASS_LOG_TRACE
@@ -130,7 +101,14 @@ public:
      *
      * @param configuration A list of configuration parameters to start the driver with.
      */
-    HdbPPCassandra(vector<string> configuration);
+    HdbPPCassandra(std::vector<std::string> configuration);
+
+    /**
+     * @brief HdbPPCassandra destructor
+     *
+     * The destructor will attempt to disconnect an open Cassandra session
+     */
+    ~HdbPPCassandra();
 
     /**
      * @brief Insert an attribute archive event into the database
@@ -173,11 +151,7 @@ public:
      * @param  ttl The time to live in hour, 0 for infinity
      * @throw Tango::DevFailed
      */
-    virtual void configure_Attr(string fqdn_attr_name,
-                                int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                int format /*SCALAR, SPECTRUM, ..*/,
-                                int write_type /*READ, READ_WRITE, ..*/,
-                                unsigned int ttl);
+    virtual void configure_Attr(std::string fqdn_attr_name, int type, int format, int write_type, unsigned int ttl);
 
     /**
      * @brief Update the ttl value for an attribute.
@@ -189,7 +163,7 @@ public:
      * @param ttl The time to live in hour, 0 for infinity
      * @throw Tango::DevFailed
      */
-    virtual void updateTTL_Attr(string fqdn_attr_name, unsigned int ttl);
+    virtual void updateTTL_Attr(std::string fqdn_attr_name, unsigned int ttl);
 
     /**
     * @brief Record a start, Stop, Pause or Remove history event for an attribute.
@@ -204,141 +178,60 @@ public:
     * @param event
     * @throw Tango::DevFailed
     */
-    virtual void event_Attr(string fqdn_attr_name, unsigned char event);
+    virtual void event_Attr(std::string fqdn_attr_name, unsigned char event);
 
 private:
+
     void connect_session();
-    string remove_domain(string facility);
 
-    bool find_attr_id(AttributeName &attr_name, CassUuid &ID);
-    bool find_attr_id_and_ttl(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
-    bool find_attr_id_and_ttl_in_db(AttributeName &attr_name, CassUuid &ID, unsigned int &ttl);
+    bool load_and_cache_attr(AttributeName &attr_name);
 
-    FindAttrResult find_attr_id_type_and_ttl(AttributeName &attr_name,
-                                             CassUuid &ID,
-                                             string attr_type,
-                                             unsigned int &conf_ttl);
+    unsigned int get_attr_ttl(AttributeName &attr_name);
+    CassUuid get_attr_uuid(AttributeName &attr_name);
+    std::pair<CassUuid, unsigned int> get_both_attr_id_and_ttl(AttributeName &attr_name);
 
-    bool find_last_event(const CassUuid &ID, string &last_event, AttributeName &attr_name);
+    bool attr_type_exists(AttributeName &attr_name, const std::string &attr_type);
 
-    string get_data_type(int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                         int format /*SCALAR, SPECTRUM, ..*/,
-                         int write_type /*READ, READ_WRITE, ..*/) const;
+    bool find_last_event(const CassUuid &ID, std::string &last_event, AttributeName &attr_name);
 
-    string get_table_name(int type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                          int format /*SCALAR, SPECTRUM, ..*/,
-                          int write_type /*READ, READ_WRITE, ..*/) const;
+    void insert_history_event(const std::string &history_event_name, CassUuid att_conf_id);
 
-    string get_insert_query_str(int tango_data_type /*DEV_DOUBLE, DEV_STRING, ..*/,
-                                int format /*SCALAR, SPECTRUM, ..*/,
-                                int write_type /*READ, READ_WRITE, ..*/,
-                                int &nbQueryParams,
-                                bool isNull,
-                                unsigned int ttl) const;
-
-    void extract_and_bind_bool(CassStatement *statement,
-                               int &param_index,
-                               int data_format /*SCALAR, SPECTRUM, ..*/,
-                               Tango::EventData *data,
-                               enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_uchar(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_short(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_ushort(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_long(CassStatement *statement,
-                               int &param_index,
-                               int data_format /*SCALAR, SPECTRUM, ..*/,
-                               Tango::EventData *data,
-                               enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_ulong(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_long64(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_ulong64(CassStatement *statement,
-                                  int &param_index,
-                                  int data_format /*SCALAR, SPECTRUM, ..*/,
-                                  Tango::EventData *data,
-                                  enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_float(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_double(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_string(CassStatement *statement,
-                                 int &param_index,
-                                 int data_format /*SCALAR, SPECTRUM, ..*/,
-                                 Tango::EventData *data,
-                                 enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_state(CassStatement *statement,
-                                int &param_index,
-                                int data_format /*SCALAR, SPECTRUM, ..*/,
-                                Tango::EventData *data,
-                                enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_encoded(CassStatement *statement,
-                                  int &param_index,
-                                  int data_format /*SCALAR, SPECTRUM, ..*/,
-                                  Tango::EventData *data,
-                                  enum extract_t extract_type /* EXTRACT_READ | EXTRACT_SET */);
-
-    void extract_and_bind_rw_values(CassStatement *statement,
-                                    int &param_index,
-                                    int data_type,
-                                    int write_type /*READ, READ_WRITE, ..*/,
-                                    int data_format /*SCALAR, SPECTRUM, ..*/,
-                                    Tango::EventData *data,
-                                    bool isNull);
-
-    void insert_history_event(const string &history_event_name, CassUuid att_conf_id);
-
-    void insert_attr_conf(AttributeName &attr_name, const string &data_type, CassUuid &uuid, unsigned int ttl = 0);
+    void insert_attr_conf(AttributeName &attr_name, const std::string &data_type, const CassUuid &uuid, unsigned int ttl = 0);
 
     void insert_domain(AttributeName &attr_name);
     void insert_family(AttributeName &attr_name);
     void insert_member(AttributeName &attr_name);
     void insert_attr_name(AttributeName &attr_name);
 
-    void update_ttl(unsigned int ttl, AttributeName &attr_name);
+    void update_ttl(AttributeName &attr_name, unsigned int ttl);
 
     std::string get_config_param(const std::map<std::string, std::string> &conf, std::string param, bool mandatory);
     void set_cassandra_consistency_level(std::string consistency_level);
-    void set_cassandra_logging_level(string level);
+    void set_cassandra_logging_level(std::string level);
+    void set_library_logging_level(std::string level);
+    std::map<std::string, std::string> extract_config(std::vector<std::string> str, std::string separator);
+
     CassError execute_statement(CassStatement *statement);
-    void throw_execute_exception(string message, string query, CassError error, const char *origin);
-    void string_vector2map(vector<string> str, string separator, map<string, string> *results);
+    void throw_execute_exception(std::string message, std::string query, CassError error, const char *origin);
+
+    // Datastax cpp driver 
+    CassCluster *_cass_cluster;
+    CassSession *_cass_session;
+    CassUuidGen *_uuid_generator;
+    CassLogLevel _cassandra_logging_level;
+    CassConsistency _consistency;
+
+    std::string _keyspace_name;
+
+    // used to flag up whether the library will store the diagnostic timestamps,
+    // setting to false via the configuration will save database space
+    bool _store_diag_times = false;
+
+    // manage prepared statement objects
+    PreparedStatementCache *_prepared_statements;
+
+    // cache some details about attributes, to save db lookup
+    AttributeCache _attr_cache;
 };
 
 /**
@@ -355,7 +248,7 @@ public:
      * HdbPPCassandra.
      * @throw Tango::DevFailed
      */
-    virtual AbstractDB *create_db(vector<string> configuration);
+    virtual AbstractDB *create_db(std::vector<std::string> configuration);
 
     virtual ~HdbPPCassandraFactory() {}
 };
