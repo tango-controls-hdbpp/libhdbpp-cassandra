@@ -66,6 +66,28 @@ HdbPPCassandra::HdbPPCassandra(vector<string> configuration)
     config = get_config_param(libhdb_conf, "logging_level", false);
     set_library_logging_level(config);
 
+    // ---- spectrum_storage_strategy optinal config ----
+    if (!(config = get_config_param(libhb_conf, "spectrum_storage_strategy", false)).empty())
+    {
+        if (config == "hour")
+        {
+            _spectrum_strategy = SpectrumStrategy::HOUR;
+            LOG(Debug) << "Spectrum strategy set to Hour" << endl;
+        }
+        else if (config == "day")
+        {
+            _spectrum_strategy = SpectrumStrategy::DAY;
+            LOG(Debug) << "Spectrum strategy set to Day" << endl;
+        }
+        else
+            LOG(Error) << "Invalid spectrum_storage_strategy received, ignoring" << endl;
+    }
+    else
+    {
+        _spectrum_strategy = SpectrumStrategy::DAY;
+        LOG(Debug) << "Spectrum strategy set to default Day" << endl;
+    }
+
     // ---- cassandra_driver_log_level optional config parameter ----
     if(!(config = get_config_param(libhdb_conf, "cassandra_driver_log_level", false)).empty())
         set_cassandra_logging_level(config);
@@ -544,10 +566,20 @@ void HdbPPCassandra::insert_Attr(Tango::EventData *data, HdbEventDataType ev_dat
     if ((tms = localtime(&ev_time_s)) == NULL)
         perror("localtime");
 
-    char period[11];
-    snprintf(period, 11, "%04d-%02d-%02d", tms->tm_year + 1900, tms->tm_mon + 1, tms->tm_mday);
+    stringstream period;
 
-    cass_statement_bind_string_by_name(statement, SC_COL_PERIOD.c_str(), period);
+    // for scale we store on a daily format, and for spectrum on a hourly
+    if (data_format == Tango::SCALAR)
+        period << setfill("0") << setw(4) << tms->tm_year + 1900 << "-"
+               << setfill("0") << setw(2) << tms->tm_mon << "-"
+               << setfill("0") << setw(2) << tms->tm_mday;
+    else
+        period << setfill("0") << setw(4) << tms->tm_year + 1900 << "-"
+               << setfill("0") << setw(2) << tms->tm_mon << "-"
+               << setfill("0") << setw(2) << tms->tm_mday << "-"
+               << setfill("0") << setw(2) << tms->tm_mday;
+
+    cass_statement_bind_string_by_name(statement, SC_COL_PERIOD.c_str(), period.str().c_str());
     cass_statement_bind_int64_by_name(statement, SC_COL_EV_TIME.c_str(), ev_time);
     cass_statement_bind_int32_by_name(statement, SC_COL_EV_TIME_US.c_str(), ev_time_us);
 

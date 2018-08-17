@@ -82,6 +82,8 @@ public:
      *        level (e.g. LOCAL_QUORUM). In the current version of this library, all the
      *        statements are executed with LOCAL_QUORUM consistency level.
      *      - store_diag_time: Either true to store the times or false to omit them.
+     *      - spectrum_storage_strategy: Set to "day" to partition daily (default) or 
+     *        "hour" to partition the tables per hour.
      * - Debug:
      *     - logging_level: One of the following:
      *          - DISABLED: No logging
@@ -232,6 +234,14 @@ private:
 
     // cache some details about attributes, to save db lookup
     AttributeCache _attr_cache;
+
+    enum SpectrumStrategy
+    {
+        HOUR,
+        DAY
+    };
+
+    SpectrumStrategy _spectrum_strategy;
 };
 
 /**
