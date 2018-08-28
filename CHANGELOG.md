@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
-* Bug fix: Stop attempts to store invalid events (i.e. errors etc), since this raises an exception.
+* Bug fix: Stop attempts to bind invalid events (i.e. errors etc), since this raises an exception. We still store the error.
 
 ## [0.12.0] - 2018-07-11
 
