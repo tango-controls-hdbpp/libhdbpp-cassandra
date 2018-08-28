@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.1] - 2018-08-28
+
+### Fixed
+
+* Bug fix: Stop attempts to store invalid events (i.e. errors etc), since this raises an exception.
+
 ## [0.12.0] - 2018-07-11
 
 ### Added
