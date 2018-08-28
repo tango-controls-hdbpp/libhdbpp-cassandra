@@ -17,7 +17,7 @@
 
 ## Version
 
-The current release version is 0.12.0.
+The current release version is 0.12.1.
 
 ### **Important Changes** 0.9.1 -> 0.10.0
 
