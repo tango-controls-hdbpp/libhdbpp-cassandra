@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.12.2] - 2018-09-25
+
+### Fixed
+
+* Reverted changes to binding floats/doubles that meant they were bound as 0 when isnana() was true. They now bind correctly as a nan.
+
 ## [0.12.1] - 2018-08-28
 
 ### Fixed

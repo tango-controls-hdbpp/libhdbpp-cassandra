@@ -293,17 +293,9 @@ template <>
 void TangoEventDataBinder::statement_bind(CassStatement *statement, const string &bind_name, float val)
 {
     if (std::isnan(val))
-    {
-        /// @todo Review quiet/signalling NaN in this context
-        cass_statement_bind_float_by_name(statement, bind_name.c_str(), 0);
-
-        /*if(numeric_limits<float>::has_quiet_NaN(val) == true)
-            cass_statement_bind_float_by_name(statement, bind_name.c_str(),
-        numeric_limits<float>::quiet_NaN());
-        else
-            cass_statement_bind_float_by_name(statement, bind_name.c_str(),
-        numeric_limits<float>::signaling_NaN());*/
-    }
+        cass_statement_bind_float_by_name(statement, bind_name.c_str(), numeric_limits<float>::quiet_NaN());
+    else if (std::isinf(val))
+        cass_statement_bind_float_by_name(statement, bind_name.c_str(), numeric_limits<float>::infinity());
     else
         cass_statement_bind_float_by_name(statement, bind_name.c_str(), val);
 }
@@ -314,16 +306,9 @@ template <>
 void TangoEventDataBinder::collection_append(CassCollection *read_values_list, float val)
 {
     if (std::isnan(val))
-    {
-        /// @todo Review quiet/signalling NaN in this context
-        cass_collection_append_float(read_values_list, 0);
-
-        /*if(numeric_limits<float>::has_quiet_NaN(val) == true)
-            cass_collection_append_float(read_values_list, numeric_limits<float>::quiet_NaN());
-        else
-            cass_collection_append_float(read_values_list,
-        numeric_limits<float>::signaling_NaN());*/
-    }
+        cass_collection_append_float(read_values_list, numeric_limits<float>::quiet_NaN());
+    else if (std::isinf(val))
+        cass_collection_append_float(read_values_list, numeric_limits<float>::infinity());
     else
         cass_collection_append_float(read_values_list, val);
 }
@@ -334,17 +319,9 @@ template <>
 void TangoEventDataBinder::statement_bind(CassStatement *statement, const string &bind_name, double val)
 {
     if (std::isnan(val))
-    {
-        /// @todo Review quiet/signalling NaN in this context
-        cass_statement_bind_double_by_name(statement, bind_name.c_str(), 0);
-
-        /*if(numeric_limits<double>::has_quiet_NaN(val))
-            cass_statement_bind_double_by_name(statement, bind_name.c_str(),
-        numeric_limits<double>::quiet_NaN());
-        else
-            cass_statement_bind_double_by_name(statement, bind_name.c_str(),
-        numeric_limits<double>::signaling_NaN());*/
-    }
+        cass_statement_bind_double_by_name(statement, bind_name.c_str(), numeric_limits<double>::quiet_NaN());
+    else if (std::isinf(val))
+        cass_statement_bind_double_by_name(statement, bind_name.c_str(), numeric_limits<double>::infinity());
     else
         cass_statement_bind_double_by_name(statement, bind_name.c_str(), val);
 }
@@ -355,16 +332,9 @@ template <>
 void TangoEventDataBinder::collection_append(CassCollection *read_values_list, double val)
 {
     if (std::isnan(val))
-    {
-        /// @todo Review quiet/signalling NaN in this context
-        cass_collection_append_double(read_values_list, 0);
-
-        /*if(numeric_limits<double>::has_quiet_NaN(val))
-            cass_collection_append_double(read_values_list, numeric_limits<double>::quiet_NaN());
-        else
-            cass_collection_append_double(read_values_list,
-        numeric_limits<double>::signaling_NaN());*/
-    }
+        cass_collection_append_double(read_values_list, numeric_limits<double>::quiet_NaN());
+    else if (std::isinf(val))
+        cass_collection_append_double(read_values_list, numeric_limits<double>::infinity());
     else
         cass_collection_append_double(read_values_list, val);
 }
